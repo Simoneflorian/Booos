@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quittungsscanner</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Quittungsscanner</h1>
+            <p class="subtitle">Fotos hochladen &rarr; Daten extrahieren &rarr; Excel exportieren</p>
+        </header>
+
+        <main>
+            <!-- Upload Zone -->
+            <section class="upload-section">
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone__icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                    </div>
+                    <p class="drop-zone__text">Quittungsfotos hier ablegen</p>
+                    <p class="drop-zone__hint">oder</p>
+                    <label class="btn btn--primary" for="fileInput">Dateien auswählen</label>
+                    <input type="file" id="fileInput" multiple accept="image/*" hidden>
+                    <p class="drop-zone__formats">PNG, JPG, JPEG, WEBP &bull; max. 16 MB pro Datei</p>
+                </div>
+            </section>
+
+            <!-- Queue -->
+            <section class="queue-section" id="queueSection" style="display:none;">
+                <div class="section-header">
+                    <h2>Hochgeladene Quittungen</h2>
+                    <div class="section-actions">
+                        <button class="btn btn--outline" id="addMoreBtn">+ Weitere hinzufügen</button>
+                        <button class="btn btn--success" id="exportBtn" disabled>Excel exportieren</button>
+                    </div>
+                </div>
+                <div class="queue" id="queue"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="modalOverlay" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Quittungsdetails</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

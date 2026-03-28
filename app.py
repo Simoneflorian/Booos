@@ -23,8 +23,13 @@ Antworte NUR mit einem validen JSON-Objekt in exakt diesem Format (keine Erklär
 
 {
   "haendler": "Name des Geschäfts",
+  "haendler_adresse": "Strasse, PLZ Ort",
+  "quittung_nr": "Quittungs- oder Rechnungsnummer",
+  "kunden_nr": "Kundennummer",
   "datum": "DD.MM.YYYY",
   "uhrzeit": "HH:MM",
+  "empfaenger_name": "Name des Empfängers/Kunden",
+  "empfaenger_adresse": "Adresse des Empfängers",
   "artikel": [
     {
       "bezeichnung": "Artikelname",
@@ -35,10 +40,10 @@ Antworte NUR mit einem validen JSON-Objekt in exakt diesem Format (keine Erklär
   ],
   "zwischensumme": 0.00,
   "steuer": 0.00,
-  "steuersatz": "19%",
+  "steuersatz": "7.7%",
   "gesamtbetrag": 0.00,
   "zahlungsart": "Bar/Karte/etc.",
-  "waehrung": "EUR"
+  "waehrung": "CHF"
 }
 
 Falls ein Wert nicht lesbar oder nicht vorhanden ist, verwende null.

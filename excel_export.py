@@ -78,7 +78,7 @@ def _create_summary_sheet(wb: Workbook, receipts: list):
 
     # Title row
     ws.row_dimensions[1].height = 36
-    ws.merge_cells("A1:G1")
+    ws.merge_cells("A1:H1")
     title_cell = ws["A1"]
     title_cell.value = f"Quittungsübersicht — erstellt am {datetime.now().strftime('%d.%m.%Y %H:%M')}"
     title_cell.font = Font(name="Calibri", bold=True, size=14, color=COLOR_HEADER_FG)
@@ -86,7 +86,7 @@ def _create_summary_sheet(wb: Workbook, receipts: list):
     title_cell.alignment = _center()
 
     # Column headers
-    headers = ["#", "Händler", "Datum", "Uhrzeit", "Zahlungsart", "Artikel (Anz.)", "Gesamtbetrag"]
+    headers = ["#", "Quittungs-Nr.", "Händler", "Datum", "Uhrzeit", "Zahlungsart", "Artikel (Anz.)", "Gesamtbetrag"]
     ws.row_dimensions[2].height = 22
     for col, h in enumerate(headers, start=1):
         cell = ws.cell(row=2, column=col, value=h)
@@ -104,6 +104,7 @@ def _create_summary_sheet(wb: Workbook, receipts: list):
 
         values = [
             idx,
+            r.get("quittung_nr") or "—",
             r.get("haendler") or "—",
             r.get("datum") or "—",
             r.get("uhrzeit") or "—",
@@ -121,10 +122,10 @@ def _create_summary_sheet(wb: Workbook, receipts: list):
 
             if col == 1:
                 cell.alignment = _center()
-            elif col == 7:
+            elif col == 8:
                 cell.alignment = _right()
                 if val is not None:
-                    cell.number_format = '#,##0.00 "EUR"'
+                    cell.number_format = '#,##0.00'
                     grand_total += float(val)
             else:
                 cell.alignment = _left()
@@ -132,21 +133,21 @@ def _create_summary_sheet(wb: Workbook, receipts: list):
     # Grand total row
     total_row = len(receipts) + 3
     ws.row_dimensions[total_row].height = 24
-    ws.merge_cells(f"A{total_row}:F{total_row}")
+    ws.merge_cells(f"A{total_row}:G{total_row}")
     label = ws.cell(row=total_row, column=1, value="GESAMT")
     label.font = _bold(11)
     label.fill = _fill(COLOR_TOTAL_BG)
     label.alignment = Alignment(horizontal="right", vertical="center")
     label.border = _border()
 
-    total_cell = ws.cell(row=total_row, column=7, value=grand_total)
+    total_cell = ws.cell(row=total_row, column=8, value=grand_total)
     total_cell.font = _bold(12)
     total_cell.fill = _fill(COLOR_TOTAL_BG)
     total_cell.alignment = _right()
-    total_cell.number_format = '#,##0.00 "EUR"'
+    total_cell.number_format = '#,##0.00'
     total_cell.border = _border()
 
-    _set_col_widths(ws, {"A": 5, "B": 28, "C": 14, "D": 10, "E": 16, "F": 14, "G": 18})
+    _set_col_widths(ws, {"A": 5, "B": 18, "C": 28, "D": 14, "E": 10, "F": 16, "G": 14, "H": 18})
 
 
 # ---------------------------------------------------------------------------
@@ -172,12 +173,19 @@ def _create_receipt_sheet(wb: Workbook, receipt: dict, idx: int):
 
     # Meta info (2-column layout)
     meta_pairs = [
+        ("Quittungs-Nr.", receipt.get("quittung_nr")),
+        ("Kunden-Nr.", receipt.get("kunden_nr")),
         ("Datum", receipt.get("datum")),
         ("Uhrzeit", receipt.get("uhrzeit")),
         ("Zahlungsart", receipt.get("zahlungsart")),
         ("Währung", receipt.get("waehrung")),
         ("Steuersatz", receipt.get("steuersatz")),
+        ("Händler Adresse", receipt.get("haendler_adresse")),
+        ("Empfänger", receipt.get("empfaenger_name")),
+        ("Empfänger Adresse", receipt.get("empfaenger_adresse")),
     ]
+    # Filter out entries where value is None to keep sheet clean
+    meta_pairs = [(k, v) for k, v in meta_pairs if v is not None]
 
     ws.row_dimensions[row].height = 6  # spacer
     row += 1

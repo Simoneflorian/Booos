@@ -202,12 +202,20 @@ function buildDetailHtml(d) {
             <td class="num">${formatCurrency(a.gesamtpreis)}</td>
         </tr>`).join("");
 
+    const optionalMeta = (label, val) =>
+        val != null ? `<dt>${label}</dt><dd>${fmt(val)}</dd>` : "";
+
     return `
         <dl class="detail-meta">
+            ${optionalMeta("Quittungs-Nr.", d.quittung_nr)}
+            ${optionalMeta("Kunden-Nr.", d.kunden_nr)}
             <dt>Datum</dt><dd>${fmt(d.datum)}</dd>
             <dt>Uhrzeit</dt><dd>${fmt(d.uhrzeit)}</dd>
             <dt>Zahlungsart</dt><dd>${fmt(d.zahlungsart)}</dd>
             <dt>Steuersatz</dt><dd>${fmt(d.steuersatz)}</dd>
+            ${optionalMeta("Empfänger", d.empfaenger_name)}
+            ${optionalMeta("Empf. Adresse", d.empfaenger_adresse)}
+            ${optionalMeta("Händler Adresse", d.haendler_adresse)}
         </dl>
 
         <table class="items-table">

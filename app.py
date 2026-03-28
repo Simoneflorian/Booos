@@ -149,5 +149,12 @@ def export():
     )
 
 
+@app.route("/api/download-vba")
+def download_vba():
+    vba_path = os.path.join(os.path.dirname(__file__), "vba_search.bas")
+    return send_file(vba_path, as_attachment=True, download_name="vba_search.bas",
+                     mimetype="text/plain")
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

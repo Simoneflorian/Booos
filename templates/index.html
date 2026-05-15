@@ -3,73 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quittungsscanner</title>
+    <title>Naruto Jutsu Erkennung</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Quittungsscanner</h1>
-            <p class="subtitle">Fotos hochladen &rarr; Daten extrahieren &rarr; Excel exportieren</p>
-        </header>
 
-        <main>
-            <!-- Upload Zone -->
-            <section class="upload-section">
-                <div class="drop-zone" id="dropZone">
-                    <div class="drop-zone__icon">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="17 8 12 3 7 8"/>
-                            <line x1="12" y1="3" x2="12" y2="15"/>
-                        </svg>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-inner">
+            <div class="logo">
+                <span class="logo-icon">忍</span>
+                <div>
+                    <h1>Jutsu Erkennung</h1>
+                    <p>Naruto Handsiegel Detektor</p>
+                </div>
+            </div>
+            <div class="chakra-indicator">
+                <div class="chakra-dot"></div>
+                <span id="statusText">Bereit</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="app-main">
+
+        <!-- Camera section -->
+        <section class="camera-section">
+            <div class="camera-wrapper" id="cameraWrapper">
+                <video id="video" autoplay playsinline muted></video>
+                <canvas id="overlay" class="camera-overlay"></canvas>
+
+                <!-- Corner decorations -->
+                <div class="corner corner--tl"></div>
+                <div class="corner corner--tr"></div>
+                <div class="corner corner--bl"></div>
+                <div class="corner corner--br"></div>
+
+                <!-- Scan line -->
+                <div class="scan-line" id="scanLine"></div>
+
+                <!-- No camera message -->
+                <div class="no-camera" id="noCamera" style="display:none;">
+                    <span class="no-camera-icon">📷</span>
+                    <p>Kamera nicht verfügbar</p>
+                    <button class="btn-primary" onclick="startCamera()">Kamera aktivieren</button>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button class="btn-capture" id="captureBtn" onclick="captureAndIdentify()">
+                    <span class="btn-capture__inner">
+                        <span class="btn-capture__kanji">印</span>
+                        <span class="btn-capture__text">Jutsu erkennen</span>
+                    </span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Result section -->
+        <section class="result-section" id="resultSection">
+            <div class="result-placeholder" id="resultPlaceholder">
+                <div class="seals-grid">
+                    <div class="seal-preview" title="Ne (Ratte)">子<span>Ne</span></div>
+                    <div class="seal-preview" title="Ushi (Ochse)">丑<span>Ushi</span></div>
+                    <div class="seal-preview" title="Tora (Tiger)">寅<span>Tora</span></div>
+                    <div class="seal-preview" title="U (Hase)">卯<span>U</span></div>
+                    <div class="seal-preview" title="Tatsu (Drache)">辰<span>Tatsu</span></div>
+                    <div class="seal-preview" title="Mi (Schlange)">巳<span>Mi</span></div>
+                    <div class="seal-preview" title="Uma (Pferd)">午<span>Uma</span></div>
+                    <div class="seal-preview" title="Hitsuji (Widder)">未<span>Hitsuji</span></div>
+                    <div class="seal-preview" title="Saru (Affe)">申<span>Saru</span></div>
+                    <div class="seal-preview" title="Tori (Vogel)">酉<span>Tori</span></div>
+                    <div class="seal-preview" title="Inu (Hund)">戌<span>Inu</span></div>
+                    <div class="seal-preview" title="I (Wildschwein)">亥<span>I</span></div>
+                </div>
+                <p class="placeholder-hint">Zeige ein Handsiegel in die Kamera und drücke "Jutsu erkennen"</p>
+            </div>
+
+            <div class="result-card" id="resultCard" style="display:none;">
+                <div class="result-header">
+                    <div class="result-seal" id="resultSeal"></div>
+                    <div class="result-meta">
+                        <div class="result-seal-name" id="resultSealName"></div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="confidenceFill"></div>
+                        </div>
                     </div>
-                    <p class="drop-zone__text">Quittungsfotos hier ablegen</p>
-                    <p class="drop-zone__hint">oder</p>
-                    <label class="btn btn--primary" for="fileInput">Dateien auswählen</label>
-                    <input type="file" id="fileInput" multiple accept="image/*" hidden>
-                    <p class="drop-zone__formats">PNG, JPG, JPEG, WEBP &bull; max. 16 MB pro Datei</p>
                 </div>
-            </section>
+                <div class="result-jutsu" id="resultJutsu"></div>
+                <div class="result-jutsu-de" id="resultJutsuDe"></div>
+                <div class="result-element-badge" id="resultElementBadge"></div>
+                <p class="result-description" id="resultDescription"></p>
+            </div>
 
-            <!-- Queue -->
-            <section class="queue-section" id="queueSection" style="display:none;">
-                <div class="section-header">
-                    <h2>Hochgeladene Quittungen</h2>
-                    <div class="section-actions">
-                        <button class="btn btn--outline" id="addMoreBtn">+ Weitere hinzufügen</button>
-                        <button class="btn btn--success" id="exportBtn" disabled>Excel exportieren</button>
-                    </div>
-                </div>
-                <div class="queue" id="queue"></div>
-            </section>
+            <div class="no-detection" id="noDetection" style="display:none;">
+                <div class="no-detection-icon">🔍</div>
+                <p>Kein Handsiegel erkannt</p>
+                <p class="no-detection-hint">Versuche eines der 12 Naruto-Handsiegel zu zeigen</p>
+            </div>
+        </section>
 
-            <!-- VBA Info -->
-            <section class="vba-info">
-                <div class="vba-info__icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                </div>
-                <div class="vba-info__text">
-                    <strong>Suchfunktion:</strong> Die Excel-Datei enthält ein <em>Suche</em>-Tab mit Live-Suche über alle Felder
-                    (Händler, Datum, Artikel, Quittungs-Nr. usw.) — einfach Suchbegriff in die gelbe Zelle eingeben.<br>
-                    Für ein Makro-Eingabefenster (Alt+F8 → <code>QuittungSuchen</code>) bitte das VBA-Modul herunterladen und in Excel importieren.
-                </div>
-                <a class="btn btn--outline btn--sm" href="/api/download-vba" download>VBA-Makro herunterladen</a>
-            </section>
-        </main>
+    </main>
+
+    <!-- Jutsu animation overlay -->
+    <div class="jutsu-overlay" id="jutsuOverlay">
+        <canvas id="jutsuCanvas"></canvas>
+        <div class="jutsu-text-container" id="jutsuTextContainer">
+            <div class="jutsu-element-kanji" id="jutsuElementKanji"></div>
+            <div class="jutsu-name-display" id="jutsuNameDisplay"></div>
+        </div>
     </div>
 
-    <!-- Detail Modal -->
-    <div class="modal-overlay" id="modalOverlay" style="display:none;">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 id="modalTitle">Quittungsdetails</h3>
-                <button class="modal-close" id="modalClose">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody"></div>
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display:none;">
+        <div class="loading-spinner">
+            <div class="spinner-ring"></div>
+            <div class="spinner-text">Chakra wird analysiert…</div>
         </div>
     </div>
 

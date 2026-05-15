@@ -1,99 +1,75 @@
 import os
 import base64
 import json
-import io
-from datetime import datetime
-from flask import Flask, request, jsonify, send_file, render_template
-from werkzeug.utils import secure_filename
+from flask import Flask, request, jsonify, render_template
 import anthropic
 from dotenv import load_dotenv
-from excel_export import create_excel
 
 load_dotenv()
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max upload
-
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-EXTRACTION_PROMPT = """Analysiere dieses Quittungsbild und extrahiere alle relevanten Daten.
-Antworte NUR mit einem validen JSON-Objekt in exakt diesem Format (keine Erklärungen, kein Markdown):
+SEAL_PROMPT = """Du bist ein Naruto-Handsiegelexperte. Analysiere dieses Bild und erkenne, ob die Person eines der 12 Naruto-Handsiegel (忍術の印) zeigt.
+
+Die 12 Siegel sind:
+- Ne (Ratte/Rat) 子: Beide Zeigefinger übereinander gelegt
+- Ushi (Ochse/Ox) 丑: Rechte Hand umschließt linke, Daumen berühren sich
+- Tora (Tiger) 寅: Hände zusammen, beide Zeigefinger zeigen nach oben
+- U (Hase/Hare) 卯: Eine Hand macht eine Pistolenform
+- Tatsu (Drache/Dragon) 辰: Fäuste berühren sich mit Knöcheln
+- Mi (Schlange/Snake) 巳: Finger ineinander verschränkt, rechter Daumen oben
+- Uma (Pferd/Horse) 午: Rechte Hand flach, linke Faust darunter
+- Hitsuji (Widder/Ram) 未: Hände verschränkt, Zeigefinger nach oben
+- Saru (Affe/Monkey) 申: Linke Hand umschließt rechte
+- Tori (Vogel/Bird) 酉: Rechter Zeige- und Mittelfinger zeigen, linke Hand greift
+- Inu (Hund/Dog) 戌: Linke Hand auf rechter Faust
+- I (Wildschwein/Boar) 亥: Alle Finger ineinander verschränkt, flach
+
+Antworte NUR mit validem JSON in exakt diesem Format (kein Markdown, keine Erklärungen):
 
 {
-  "haendler": "Name des Geschäfts",
-  "haendler_adresse": "Strasse, PLZ Ort",
-  "quittung_nr": "Quittungs- oder Rechnungsnummer",
-  "kunden_nr": "Kundennummer",
-  "datum": "DD.MM.YYYY",
-  "uhrzeit": "HH:MM",
-  "empfaenger_name": "Name des Empfängers/Kunden",
-  "empfaenger_adresse": "Adresse des Empfängers",
-  "artikel": [
-    {
-      "bezeichnung": "Artikelname",
-      "menge": 1,
-      "einzelpreis": 0.00,
-      "gesamtpreis": 0.00
-    }
-  ],
-  "zwischensumme": 0.00,
-  "steuer": 0.00,
-  "steuersatz": "7.7%",
-  "gesamtbetrag": 0.00,
-  "zahlungsart": "Bar/Karte/etc.",
-  "waehrung": "CHF"
+  "detected": true,
+  "seal": "Tiger",
+  "seal_kanji": "寅",
+  "seal_japanese": "Tora",
+  "jutsu": "Katon: Gokakyu no Jutsu",
+  "jutsu_de": "Feuerstil: Feuerball-Jutsu",
+  "element": "fire",
+  "confidence": "high",
+  "description": "Eine mächtige Feuerball-Technik, die einen massiven Feuerball ausstößt"
 }
 
-Falls ein Wert nicht lesbar oder nicht vorhanden ist, verwende null.
-Zahlen immer als Dezimalzahl ohne Währungssymbol."""
+Wenn kein Handsiegel erkannt wird, antworte mit:
+{
+  "detected": false,
+  "seal": null,
+  "seal_kanji": null,
+  "seal_japanese": null,
+  "jutsu": null,
+  "jutsu_de": null,
+  "element": null,
+  "confidence": null,
+  "description": null
+}
 
+Element muss eines von sein: fire, water, lightning, earth, wind, shadow, smoke, energy
 
-def allowed_file(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-def encode_image(image_bytes: bytes, mime_type: str) -> str:
-    return base64.standard_b64encode(image_bytes).decode("utf-8")
-
-
-def analyze_receipt(image_bytes: bytes, mime_type: str) -> dict:
-    image_data = encode_image(image_bytes, mime_type)
-
-    message = client.messages.create(
-        model="claude-opus-4-6",
-        max_tokens=1024,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": mime_type,
-                            "data": image_data,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": EXTRACTION_PROMPT,
-                    },
-                ],
-            }
-        ],
-    )
-
-    raw_text = message.content[0].text.strip()
-    # Strip markdown code blocks if present
-    if raw_text.startswith("```"):
-        raw_text = raw_text.split("```")[1]
-        if raw_text.startswith("json"):
-            raw_text = raw_text[4:]
-        raw_text = raw_text.strip()
-
-    return json.loads(raw_text)
+Jutsu-Zuordnung pro Siegel:
+- Rat (Ne): Kage Bunshin no Jutsu → element: shadow
+- Ox (Ushi): Suiton: Suiro no Jutsu → element: water
+- Tiger (Tora): Katon: Gokakyu no Jutsu → element: fire
+- Hare (U): Chidori → element: lightning
+- Dragon (Tatsu): Kuchiyose no Jutsu → element: smoke
+- Snake (Mi): Doton: Doryudan → element: earth
+- Horse (Uma): Katon: Ryuka no Jutsu → element: fire
+- Ram (Hitsuji): Henge no Jutsu → element: smoke
+- Monkey (Saru): Futon: Rasengan → element: wind
+- Bird (Tori): Raikiri → element: lightning
+- Dog (Inu): Sanju Rashomon → element: energy
+- Boar (I): Hakke Hasangeki → element: energy"""
 
 
 @app.route("/")
@@ -101,59 +77,52 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/api/analyze", methods=["POST"])
-def analyze():
-    if "file" not in request.files:
-        return jsonify({"error": "Keine Datei hochgeladen"}), 400
+@app.route("/api/identify-seal", methods=["POST"])
+def identify_seal():
+    data = request.get_json()
+    if not data or "image" not in data:
+        return jsonify({"error": "Kein Bild übermittelt"}), 400
 
-    file = request.files["file"]
-
-    if file.filename == "":
-        return jsonify({"error": "Keine Datei ausgewählt"}), 400
-
-    if not allowed_file(file.filename):
-        return jsonify({"error": "Ungültiges Dateiformat. Erlaubt: PNG, JPG, JPEG, WEBP, GIF"}), 400
-
-    image_bytes = file.read()
-    ext = file.filename.rsplit(".", 1)[1].lower()
-    mime_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
-                "webp": "image/webp", "gif": "image/gif"}
-    mime_type = mime_map.get(ext, "image/jpeg")
+    image_data = data["image"]
+    if "," in image_data:
+        image_data = image_data.split(",", 1)[1]
 
     try:
-        receipt_data = analyze_receipt(image_bytes, mime_type)
+        message = client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=512,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": image_data,
+                            },
+                        },
+                        {"type": "text", "text": SEAL_PROMPT},
+                    ],
+                }
+            ],
+        )
+
+        raw = message.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+
+        result = json.loads(raw)
+        return jsonify(result)
+
     except json.JSONDecodeError as e:
         return jsonify({"error": f"Antwort konnte nicht geparst werden: {e}"}), 500
     except anthropic.APIError as e:
         return jsonify({"error": f"API-Fehler: {e}"}), 500
-
-    return jsonify({"success": True, "data": receipt_data})
-
-
-@app.route("/api/export", methods=["POST"])
-def export():
-    receipts = request.get_json()
-
-    if not receipts or not isinstance(receipts, list) or len(receipts) == 0:
-        return jsonify({"error": "Keine Quittungsdaten übergeben"}), 400
-
-    excel_buffer = create_excel(receipts)
-
-    filename = f"quittungen_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-
-    return send_file(
-        excel_buffer,
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        as_attachment=True,
-        download_name=filename,
-    )
-
-
-@app.route("/api/download-vba")
-def download_vba():
-    vba_path = os.path.join(os.path.dirname(__file__), "vba_search.bas")
-    return send_file(vba_path, as_attachment=True, download_name="vba_search.bas",
-                     mimetype="text/plain")
 
 
 if __name__ == "__main__":

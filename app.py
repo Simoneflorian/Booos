@@ -101,6 +101,11 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/game")
+def game():
+    return render_template("game.html")
+
+
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
     if "file" not in request.files:

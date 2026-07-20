@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jump &amp; Run</title>
+    <title>Pinguin Jump &amp; Run</title>
     <link rel="stylesheet" href="/static/css/game.css">
 </head>
 <body>
     <div class="game-wrap">
         <header class="game-header">
-            <h1>Jump &amp; Run</h1>
+            <h1>🐧 Pinguin Jump &amp; Run</h1>
             <a class="back-link" href="/">&larr; Zurück zum Quittungsscanner</a>
         </header>
 
         <div class="hud">
-            <div class="hud__item">⭐ <span id="score">0</span></div>
+            <div class="hud__item">🐟 <span id="score">0</span></div>
             <div class="hud__item">❤️ <span id="lives">3</span></div>
             <div class="hud__item">🚩 Level <span id="level">1</span>/<span id="levelCount">3</span></div>
         </div>
@@ -23,14 +23,14 @@
             <canvas id="game" width="900" height="480"></canvas>
             <div class="overlay" id="overlay">
                 <div class="overlay__box">
-                    <h2 id="overlayTitle">Jump &amp; Run</h2>
-                    <p id="overlayText">Steuerung: &larr; &rarr; oder A/D zum Laufen, Leertaste/W/&uarr; zum Springen.<br>Sammle Sterne, weiche Gegnern aus und erreiche die Flagge!</p>
+                    <h2 id="overlayTitle">🐧 Pinguin Jump &amp; Run</h2>
+                    <p id="overlayText">Hilf dem Pinguin durch die eisige Antarktis!<br>Steuerung: &larr; &rarr; oder A/D zum Laufen, Leertaste/W/&uarr; zum Springen.<br>Sammle Fische, weiche Seeleoparden, Orcas und Haien aus und erreiche die Flagge!</p>
                     <button class="btn" id="overlayBtn">Start</button>
                 </div>
             </div>
         </div>
 
-        <p class="hint">Steuerung: ←/→ oder A/D laufen · Leertaste/↑/W springen (auf Gegner draufspringen tötet sie) · P Pause</p>
+        <p class="hint">Steuerung: ←/→ oder A/D laufen · Leertaste/↑/W springen (auf Seeleoparden, Orcas &amp; Haie draufspringen besiegt sie) · P Pause</p>
     </div>
 
     <script src="/static/js/game.js"></script>

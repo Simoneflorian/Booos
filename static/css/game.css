@@ -65,7 +65,7 @@ canvas#game {
     width: 100%;
     height: auto;
     aspect-ratio: 900 / 480;
-    background: #7ec8f2;
+    background: #a8d4ee;
     border-radius: var(--radius);
     border: 1px solid var(--border);
     box-shadow: 0 8px 24px rgba(0,0,0,.35);

@@ -142,6 +142,7 @@
     let level = null;
     let player = null;
     let terrainCanvas = null;
+    let pal = null;
 
     // Seeded RNG so painterly brush strokes stay stable between frames.
     function rng(seed) {
@@ -151,6 +152,45 @@
             let t = Math.imul(a ^ (a >>> 15), 1 | a);
             t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
             return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+
+    // Seedable 2D simplex noise (Gustavson/Wagner style) for organic silhouettes.
+    function makeNoise2D(seed) {
+        const p = new Uint8Array(256);
+        for (let i = 0; i < 256; i++) p[i] = i;
+        const rand = rng(seed);
+        for (let i = 255; i > 0; i--) {
+            const j = Math.floor(rand() * (i + 1));
+            const t = p[i]; p[i] = p[j]; p[j] = t;
+        }
+        const perm = new Uint8Array(512);
+        const permMod12 = new Uint8Array(512);
+        for (let i = 0; i < 512; i++) { perm[i] = p[i & 255]; permMod12[i] = perm[i] % 12; }
+        const grad = [1,1,-1,1,1,-1,-1,-1,1,0,-1,0,0,1,0,-1];
+        const g3 = [1,1,0,-1,1,0,1,-1,0,-1,-1,0,1,0,1,-1,0,1,1,0,-1,-1,0,-1,0,1,1,0,-1,1,0,1,-1,0,-1,-1];
+        const F2 = 0.5 * (Math.sqrt(3) - 1);
+        const G2 = (3 - Math.sqrt(3)) / 6;
+        return function (xin, yin) {
+            let n0 = 0, n1 = 0, n2 = 0;
+            const s = (xin + yin) * F2;
+            const i = Math.floor(xin + s);
+            const j = Math.floor(yin + s);
+            const t = (i + j) * G2;
+            const x0 = xin - (i - t);
+            const y0 = yin - (j - t);
+            let i1, j1;
+            if (x0 > y0) { i1 = 1; j1 = 0; } else { i1 = 0; j1 = 1; }
+            const x1 = x0 - i1 + G2, y1 = y0 - j1 + G2;
+            const x2 = x0 - 1 + 2 * G2, y2 = y0 - 1 + 2 * G2;
+            const ii = i & 255, jj = j & 255;
+            let t0 = 0.5 - x0 * x0 - y0 * y0;
+            if (t0 >= 0) { t0 *= t0; const gi = permMod12[ii + perm[jj]] * 3; n0 = t0 * t0 * (g3[gi] * x0 + g3[gi + 1] * y0); }
+            let t1 = 0.5 - x1 * x1 - y1 * y1;
+            if (t1 >= 0) { t1 *= t1; const gi = permMod12[ii + i1 + perm[jj + j1]] * 3; n1 = t1 * t1 * (g3[gi] * x1 + g3[gi + 1] * y1); }
+            let t2 = 0.5 - x2 * x2 - y2 * y2;
+            if (t2 >= 0) { t2 *= t2; const gi = permMod12[ii + 1 + perm[jj + 1]] * 3; n2 = t2 * t2 * (g3[gi] * x2 + g3[gi + 1] * y2); }
+            return 70 * (n0 + n1 + n2);
         };
     }
 
@@ -512,7 +552,88 @@
         levelEl.textContent = levelIndex + 1;
     }
 
-    // ---- Painterly rendering ----------------------------------------------
+    // ======================================================================
+    //  Time-of-day palette system (GRIS-style, coupled to the system clock)
+    // ======================================================================
+    // Six keyframe palettes; the live palette is interpolated continuously
+    // between the two bracketing keyframes for the current hour. Each defines
+    // one dominant colour family broken by a single saturated accent.
+    const PALETTE_KEYS = [
+        { h: 0,  sky: [[0,[12,16,34]],[0.5,[22,30,58]],[0.78,[40,46,78]],[1,[30,40,66]]],
+          ice:[150,168,196], iceShadow:[64,82,120], iceLight:[206,220,240], light:[196,208,236],
+          fog:[26,34,60], particle:[210,224,246], water:[[24,50,84],[8,20,42]], accent:[226,232,252] },
+        { h: 5,  sky: [[0,[42,44,88]],[0.45,[98,86,132]],[0.72,[196,138,138]],[1,[238,198,168]]],
+          ice:[196,196,214], iceShadow:[116,106,138], iceLight:[240,224,214], light:[248,206,178],
+          fog:[150,128,148], particle:[244,224,224], water:[[52,74,110],[24,40,68]], accent:[250,192,146] },
+        { h: 8,  sky: [[0,[110,150,190]],[0.5,[172,202,224]],[0.76,[220,224,224]],[1,[228,238,244]]],
+          ice:[214,230,240], iceShadow:[118,150,178], iceLight:[248,252,255], light:[255,244,222],
+          fog:[176,200,220], particle:[236,246,252], water:[[58,120,156],[20,58,92]], accent:[255,236,196] },
+        { h: 12, sky: [[0,[92,148,206]],[0.5,[160,200,236]],[0.8,[212,232,246]],[1,[228,242,250]]],
+          ice:[224,238,248], iceShadow:[130,166,196], iceLight:[255,255,255], light:[255,252,240],
+          fog:[190,216,236], particle:[244,250,255], water:[[64,138,176],[18,66,102]], accent:[255,250,232] },
+        { h: 18, sky: [[0,[54,70,116]],[0.4,[178,116,120]],[0.7,[238,150,94]],[1,[250,198,120]]],
+          ice:[236,206,196], iceShadow:[122,92,116], iceLight:[252,224,190], light:[255,176,108],
+          fog:[196,128,108], particle:[252,214,190], water:[[92,88,120],[38,42,72]], accent:[255,146,74] },
+        { h: 21, sky: [[0,[22,26,56]],[0.5,[52,54,94]],[0.78,[92,84,124]],[1,[128,112,142]]],
+          ice:[166,174,202], iceShadow:[82,86,124], iceLight:[214,214,236], light:[196,180,206],
+          fog:[62,62,98], particle:[214,214,238], water:[[38,50,84],[16,26,50]], accent:[212,182,216] },
+    ];
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function lerpRGB(a, b, t) { return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]; }
+    function rgb(c, a) {
+        return a === undefined
+            ? `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`
+            : `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+    }
+
+    function currentHour() {
+        if (typeof window.__hourOverride === "number") return window.__hourOverride;
+        const d = new Date();
+        return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+    }
+
+    function samplePalette(hour) {
+        const K = PALETTE_KEYS;
+        let a = K[0], b = K[0], t = 0;
+        for (let i = 0; i < K.length; i++) {
+            const cur = K[i], nxt = K[(i + 1) % K.length];
+            let h0 = cur.h, h1 = nxt.h; if (h1 <= h0) h1 += 24;
+            let hh = hour; if (hh < h0) hh += 24;
+            if (hh >= h0 && hh <= h1) { a = cur; b = nxt; t = (hh - h0) / (h1 - h0); break; }
+        }
+        const ts = t * t * (3 - 2 * t); // smoothstep — no hard jumps
+        return {
+            sky: a.sky.map((s, i) => [s[0], lerpRGB(s[1], b.sky[i][1], ts)]),
+            ice: lerpRGB(a.ice, b.ice, ts),
+            iceShadow: lerpRGB(a.iceShadow, b.iceShadow, ts),
+            iceLight: lerpRGB(a.iceLight, b.iceLight, ts),
+            light: lerpRGB(a.light, b.light, ts),
+            fog: lerpRGB(a.fog, b.fog, ts),
+            particle: lerpRGB(a.particle, b.particle, ts),
+            water: [lerpRGB(a.water[0], b.water[0], ts), lerpRGB(a.water[1], b.water[1], ts)],
+            accent: lerpRGB(a.accent, b.accent, ts),
+        };
+    }
+
+    // Sun (05–19, incl. twilight) / moon (19–05) arcing across the sky.
+    function skyBody(hour) {
+        const isDay = hour >= 5 && hour < 19;
+        const frac = isDay ? (hour - 5) / 14 : (((hour - 19) + 24) % 24) / 10;
+        const alt = Math.sin(frac * Math.PI);
+        return { x: 40 + frac * (W - 80), y: 300 - alt * 240, alt, isDay, frac };
+    }
+
+    function starAlpha(h) {
+        if (h >= 20 || h < 5) return 1;
+        if (h >= 5 && h < 7) return (7 - h) / 2;
+        if (h >= 18 && h < 20) return (h - 18) / 2;
+        return 0;
+    }
+
+    // ======================================================================
+    //  Painterly rendering
+    // ======================================================================
     function ell(x, y, rx, ry, rot, fill, alpha) {
         ctx.save();
         ctx.globalAlpha = alpha === undefined ? 1 : alpha;
@@ -523,133 +644,299 @@
         ctx.restore();
     }
 
-    // Sky, painted once with soft layered brush strokes.
-    const skyCanvas = document.createElement("canvas");
-    skyCanvas.width = W; skyCanvas.height = H;
-    (function paintSky() {
-        const c = skyCanvas.getContext("2d");
-        const r = rng(7);
-        const g = c.createLinearGradient(0, 0, 0, H);
-        g.addColorStop(0, "#7fa4c6");
-        g.addColorStop(0.45, "#b5d0e3");
-        g.addColorStop(0.72, "#e6dbd0");
-        g.addColorStop(1, "#d6e6ef");
-        c.fillStyle = g;
-        c.fillRect(0, 0, W, H);
-        for (let i = 0; i < 70; i++) {
-            const y = r() * H * 0.78;
-            const x = r() * W;
-            const len = 60 + r() * 240;
-            const th = 4 + r() * 16;
-            const warm = y > H * 0.45;
-            c.fillStyle = warm
-                ? `rgba(${232 + r() * 20 | 0}, ${208 + r() * 26 | 0}, ${186 + r() * 30 | 0}, ${0.05 + r() * 0.09})`
-                : `rgba(${186 + r() * 44 | 0}, ${212 + r() * 32 | 0}, ${232 + r() * 22 | 0}, ${0.06 + r() * 0.1})`;
-            c.beginPath();
-            c.ellipse(x, y, len / 2, th / 2, (r() - 0.5) * 0.12, 0, Math.PI * 2);
-            c.fill();
+    // ---- Noise-based iceberg silhouettes (unique seed each) ----------------
+    function makeBergShape(seed) {
+        const n = makeNoise2D(seed);
+        const r = rng(seed * 131 + 7);
+        const w = 110 + r() * 180;
+        const h = 80 + r() * 140;
+        const peakX = 0.28 + r() * 0.44;   // asymmetric peak position
+        const jag = 0.10 + r() * 0.18;     // edge roughness
+        const segs = 16 + (r() * 10 | 0);
+        const pts = [{ x: 0, y: 0 }];
+        for (let i = 1; i < segs; i++) {
+            const fx = i / segs;
+            const tri = fx < peakX ? fx / peakX : 1 - (fx - peakX) / (1 - peakX);
+            let y = -h * Math.pow(Math.max(tri, 0), 0.85);
+            y += n(fx * 4.0, seed * 0.01) * h * jag;      // broad undulation
+            y += n(fx * 12.0, 3) * h * jag * 0.4;         // fine jagged detail
+            y = Math.min(y, -2);
+            const x = fx * w + n(fx * 6, 7) * 7;
+            pts.push({ x, y });
         }
-        // Low polar sun with a soft halo
-        const sx = W - 150, sy = 100;
-        const halo = c.createRadialGradient(sx, sy, 5, sx, sy, 130);
-        halo.addColorStop(0, "rgba(255,238,204,0.95)");
-        halo.addColorStop(0.25, "rgba(255,226,180,0.4)");
-        halo.addColorStop(1, "rgba(255,226,180,0)");
-        c.fillStyle = halo;
-        c.fillRect(sx - 140, sy - 140, 280, 280);
-        c.fillStyle = "rgba(255,247,226,0.95)";
-        c.beginPath(); c.arc(sx, sy, 30, 0, Math.PI * 2); c.fill();
-    })();
+        pts.push({ x: w, y: 0 });
+        return { w, h, pts };
+    }
 
-    // Soft vignette, painted once.
-    const vignetteCanvas = document.createElement("canvas");
-    vignetteCanvas.width = W; vignetteCanvas.height = H;
-    (function paintVignette() {
-        const c = vignetteCanvas.getContext("2d");
-        const g = c.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, H * 1.05);
-        g.addColorStop(0, "rgba(30,50,70,0)");
-        g.addColorStop(1, "rgba(24,42,60,0.32)");
+    // Paint an iceberg to its own sprite in neutral ice tones with brush strokes.
+    function paintBerg(shape, seed) {
+        const pad = 10;
+        const cw = Math.ceil(shape.w) + pad * 2;
+        const ch = Math.ceil(shape.h) + pad * 2;
+        const cvs = document.createElement("canvas");
+        cvs.width = cw; cvs.height = ch;
+        const c = cvs.getContext("2d");
+        const baseY = ch - pad;
+        const r = rng(seed * 17 + 3);
+
+        c.beginPath();
+        c.moveTo(pad + shape.pts[0].x, baseY + shape.pts[0].y);
+        for (const p of shape.pts) c.lineTo(pad + p.x, baseY + p.y);
+        c.closePath();
+        c.save();
+        c.clip();
+
+        const g = c.createLinearGradient(0, baseY - shape.h, 0, baseY);
+        g.addColorStop(0, "#f2f7fb");
+        g.addColorStop(0.55, "#d6e6f0");
+        g.addColorStop(1, "#a8c6da");
         c.fillStyle = g;
-        c.fillRect(0, 0, W, H);
-    })();
+        c.fillRect(0, 0, cw, ch);
 
-    // Distant icebergs (parallax layer), generated once.
+        for (let i = 0; i < 170; i++) {
+            const bx = pad + r() * shape.w;
+            const by = baseY - r() * shape.h;
+            const sh = r();
+            const tone = sh < 0.5 ? [255, 255, 255] : (sh < 0.8 ? [198, 222, 236] : [150, 184, 208]);
+            c.globalAlpha = 0.05 + r() * 0.09;
+            c.fillStyle = `rgb(${tone[0]},${tone[1]},${tone[2]})`;
+            c.save();
+            c.translate(bx, by);
+            c.rotate((r() - 0.5) * 1.2);
+            c.beginPath();
+            c.ellipse(0, 0, 6 + r() * 14, 1.5 + r() * 2.5, 0, 0, Math.PI * 2);
+            c.fill();
+            c.restore();
+        }
+        c.globalAlpha = 1;
+        c.restore();
+
+        // faint snow rim along the sunlit ridge
+        c.strokeStyle = "rgba(255,255,255,0.5)";
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(pad + shape.pts[0].x, baseY + shape.pts[0].y);
+        for (const p of shape.pts) c.lineTo(pad + p.x, baseY + p.y);
+        c.stroke();
+
+        return { cvs, pad, baseY };
+    }
+
+    const BERG_SPACING = 250;
+    const BERG_COUNT = 16;
+    const BERG_SPAN = BERG_COUNT * BERG_SPACING;
     const bergs = [];
     (function makeBergs() {
         const r = rng(21);
-        for (let i = 0; i < 12; i++) {
-            const bx = i * 310 + r() * 120;
-            const bw = 130 + r() * 130;
-            const peak = 290 + r() * 90;
-            bergs.push({
-                x: bx, w: bw, peak,
-                mid: 0.35 + r() * 0.3,
-                notch: 0.5 + r() * 0.3,
+        for (let i = 0; i < BERG_COUNT; i++) {
+            const seed = 100 + i * 13;
+            const shape = makeBergShape(seed);
+            bergs.push({ x: i * BERG_SPACING + r() * 90, sprite: paintBerg(shape, seed), base: 446 + r() * 12 });
+        }
+    })();
+
+    function drawBergs() {
+        const parallax = cameraX * 0.42;
+        for (const b of bergs) {
+            const bx = ((b.x - parallax) % BERG_SPAN + BERG_SPAN) % BERG_SPAN - 300;
+            if (bx > W + 240 || bx < -340) continue;
+            const s = b.sprite;
+            ctx.drawImage(s.cvs, bx - s.pad, b.base - s.baseY);
+        }
+    }
+
+    // ---- Sky, sun/moon, stars, noise-edged clouds --------------------------
+    const skyStrokes = [];
+    (function makeSkyStrokes() {
+        const r = rng(555);
+        for (let i = 0; i < 80; i++) {
+            skyStrokes.push({
+                x: r() * W, y: r() * (WATER_TOP - 40),
+                len: 60 + r() * 240, th: 4 + r() * 16,
+                rot: (r() - 0.5) * 0.12, tone: r(), a: 0.05 + r() * 0.08,
             });
         }
     })();
 
-    // Ice terrain, pre-painted per level with wobbly painterly edges.
+    const stars = [];
+    (function makeStars() {
+        const r = rng(909);
+        for (let i = 0; i < 70; i++) {
+            stars.push({ x: r() * W, y: r() * (WATER_TOP - 120), s: 0.6 + r() * 1.4, tw: r() * Math.PI * 2 });
+        }
+    })();
+
+    // Clouds: rings of points displaced by noise → soft irregular silhouettes.
+    const clouds = [];
+    (function makeClouds() {
+        const r = rng(333);
+        for (let i = 0; i < 5; i++) {
+            const seed = 400 + i * 9;
+            const n = makeNoise2D(seed);
+            const cw = 120 + r() * 160;
+            const chh = 26 + r() * 26;
+            const puffs = [];
+            const count = 10 + (r() * 6 | 0);
+            for (let k = 0; k < count; k++) {
+                const fx = k / (count - 1);
+                const arch = Math.sin(fx * Math.PI);
+                puffs.push({
+                    dx: (fx - 0.5) * cw,
+                    dy: -arch * chh * (0.5 + n(fx * 3, 0) * 0.4),
+                    rx: 16 + arch * 26 + n(fx * 5, 2) * 10,
+                    ry: 10 + arch * 14,
+                });
+            }
+            clouds.push({ x: r() * 2400, y: 90 + r() * 150, puffs, speed: 4 + r() * 6 });
+        }
+    })();
+
+    function drawSky(pal, body, time) {
+        const g = ctx.createLinearGradient(0, 0, 0, WATER_TOP);
+        for (const s of pal.sky) g.addColorStop(s[0], rgb(s[1]));
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+
+        // Break the linear bands with painterly horizontal strokes.
+        for (const s of skyStrokes) {
+            const col = lerpRGB(pal.fog, pal.light, s.tone);
+            ctx.save();
+            ctx.globalAlpha = s.a;
+            ctx.fillStyle = rgb(col);
+            ctx.translate(s.x, s.y);
+            ctx.rotate(s.rot);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, s.len / 2, s.th / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    function drawBody(pal, body) {
+        const { x, y, alt, isDay } = body;
+        const col = isDay ? pal.accent : [232, 238, 252];
+        const R = isDay ? 24 + (1 - alt) * 12 : 20;
+        const halo = ctx.createRadialGradient(x, y, 2, x, y, R * 4.2);
+        halo.addColorStop(0, rgb(col, 0.5));
+        halo.addColorStop(1, rgb(col, 0));
+        ctx.fillStyle = halo;
+        ctx.beginPath(); ctx.arc(x, y, R * 4.2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = rgb(col, 0.96);
+        ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+        if (!isDay) {
+            // fake a crescent by overlaying a sky-coloured disc
+            ctx.fillStyle = rgb(pal.sky[0][1]);
+            ctx.beginPath(); ctx.arc(x + R * 0.45, y - R * 0.3, R * 0.92, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+
+    function drawStars(pal, hour, time) {
+        const a = starAlpha(hour);
+        if (a <= 0) return;
+        ctx.fillStyle = "#ffffff";
+        for (const st of stars) {
+            const tw = 0.55 + 0.45 * Math.sin(time * 2 + st.tw);
+            ctx.globalAlpha = a * tw * 0.9;
+            ctx.beginPath();
+            ctx.arc(st.x, st.y, st.s, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    function drawClouds(pal, time) {
+        const col = lerpRGB(pal.fog, pal.particle, 0.5);
+        for (const cl of clouds) {
+            const parallax = cameraX * 0.25;
+            const cx = ((cl.x - time * cl.speed - parallax) % 2600 + 2600) % 2600 - 400;
+            if (cx > W + 260 || cx < -300) continue;
+            for (let pass = 0; pass < 2; pass++) {
+                ctx.globalAlpha = pass === 0 ? 0.16 : 0.1;
+                ctx.fillStyle = rgb(pass === 0 ? col : pal.light);
+                for (const pf of cl.puffs) {
+                    ctx.beginPath();
+                    ctx.ellipse(cx + pf.dx, cl.y + pf.dy - pass * 3, pf.rx, pf.ry, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    // ---- Ice terrain, noise-edged with painterly brush strokes -------------
     function paintTerrain(idx) {
         terrainCanvas = document.createElement("canvas");
         terrainCanvas.width = level.width;
         terrainCanvas.height = H;
         const c = terrainCanvas.getContext("2d");
         const r = rng(4200 + idx);
+        const n = makeNoise2D(9001 + idx);
 
         for (const p of level.platforms) {
-            // Body with jittered outline
-            const g = c.createLinearGradient(0, p.y, 0, p.y + p.h + 14);
-            g.addColorStop(0, "#d8ebf4");
-            g.addColorStop(0.5, "#b3d2e4");
-            g.addColorStop(1, "#88afc9");
-            c.fillStyle = g;
-            c.beginPath();
-            c.moveTo(p.x + (r() - 0.5) * 4, p.y + (r() - 0.5) * 3);
-            for (let x = p.x + 24; x < p.x + p.w; x += 24) {
-                c.lineTo(x, p.y + (r() - 0.5) * 3.5);
+            // noisy top edge
+            const topPts = [];
+            for (let x = p.x; x <= p.x + p.w; x += 8) {
+                const e = n(x * 0.05, p.y * 0.01) * 3 + n(x * 0.15, 7) * 1.5;
+                topPts.push({ x, y: p.y + e });
             }
-            c.lineTo(p.x + p.w + (r() - 0.5) * 5, p.y + (r() - 0.5) * 3);
-            c.lineTo(p.x + p.w + (r() - 0.5) * 8, p.y + p.h * 0.5);
-            c.lineTo(p.x + p.w + (r() - 0.5) * 6, p.y + p.h + (r() - 0.5) * 4);
-            c.lineTo(p.x + (r() - 0.5) * 6, p.y + p.h + (r() - 0.5) * 4);
-            c.lineTo(p.x + (r() - 0.5) * 8, p.y + p.h * 0.5);
+
+            c.beginPath();
+            c.moveTo(p.x, p.y + p.h);
+            for (const tp of topPts) c.lineTo(tp.x, tp.y);
+            c.lineTo(p.x + p.w, p.y + p.h);
+            for (let x = p.x + p.w; x >= p.x; x -= 10) {
+                c.lineTo(x, p.y + p.h + n(x * 0.06, 50) * 3);
+            }
             c.closePath();
+            c.save();
+            c.clip();
+
+            const g = c.createLinearGradient(0, p.y - 4, 0, p.y + p.h + 16);
+            g.addColorStop(0, "#f4f9fc");
+            g.addColorStop(0.5, "#d3e6f0");
+            g.addColorStop(1, "#a4c4d8");
+            c.fillStyle = g;
+            c.fillRect(p.x - 6, p.y - 10, p.w + 12, p.h + 34);
+
+            const strokes = Math.max(8, p.w / 8 | 0);
+            for (let i = 0; i < strokes; i++) {
+                const sx = p.x + r() * p.w;
+                const sy = p.y + 2 + r() * Math.max(6, p.h);
+                const sh = r();
+                const tone = sh < 0.5 ? [255, 255, 255] : (sh < 0.8 ? [200, 222, 236] : [150, 184, 208]);
+                c.globalAlpha = 0.05 + r() * 0.08;
+                c.fillStyle = `rgb(${tone[0]},${tone[1]},${tone[2]})`;
+                c.save();
+                c.translate(sx, sy);
+                c.rotate((r() - 0.5) * 0.8);
+                c.beginPath();
+                c.ellipse(0, 0, 5 + r() * 12, 1.4 + r() * 2, 0, 0, Math.PI * 2);
+                c.fill();
+                c.restore();
+            }
+            c.globalAlpha = 1;
+            c.fillStyle = "rgba(70,104,134,0.32)";
+            c.fillRect(p.x, p.y + p.h - 7, p.w, 7);
+            c.restore();
+
+            // noise-edged snow cap sitting on the top ridge
+            c.beginPath();
+            c.moveTo(topPts[0].x, topPts[0].y + 1);
+            for (const tp of topPts) {
+                const s = 3 + (n(tp.x * 0.1, 20) + 1) * 3;
+                c.lineTo(tp.x, tp.y - s);
+            }
+            for (let i = topPts.length - 1; i >= 0; i--) c.lineTo(topPts[i].x, topPts[i].y + 1);
+            c.closePath();
+            c.fillStyle = "rgba(255,255,255,0.95)";
             c.fill();
 
-            // Cool shadow along the waterline
-            c.fillStyle = "rgba(74, 112, 142, 0.35)";
-            c.fillRect(p.x, p.y + p.h - 7, p.w, 7);
-
-            // Snow cap: overlapping soft dabs
-            for (let x = p.x - 4; x < p.x + p.w + 4; x += 16) {
-                const rx = 12 + r() * 12;
-                c.fillStyle = `rgba(255,255,255,${0.75 + r() * 0.25})`;
-                c.beginPath();
-                c.ellipse(x + r() * 8, p.y + 2.5 + (r() - 0.5) * 2.5, rx, 4.5 + r() * 2.5, (r() - 0.5) * 0.2, 0, Math.PI * 2);
-                c.fill();
-            }
-
-            // Blue texture strokes in the ice
-            const strokes = Math.max(3, p.w / 20 | 0);
-            for (let i = 0; i < strokes; i++) {
-                const sx = p.x + 8 + r() * (p.w - 16);
-                const sy = p.y + 10 + r() * Math.max(4, p.h - 16);
-                c.strokeStyle = `rgba(120, 160, 190, ${0.12 + r() * 0.14})`;
-                c.lineWidth = 1.5 + r() * 2;
-                c.beginPath();
-                c.moveTo(sx, sy);
-                c.lineTo(sx + 8 + r() * 16, sy + (r() - 0.5) * 6);
-                c.stroke();
-            }
-
-            // Icicles under thin floating floes
             if (p.h <= 20) {
-                const n = 2 + (r() * 3 | 0);
-                for (let i = 0; i < n; i++) {
+                const cnt = 2 + (r() * 3 | 0);
+                for (let i = 0; i < cnt; i++) {
                     const ix = p.x + 10 + r() * (p.w - 20);
                     const il = 6 + r() * 12;
-                    c.fillStyle = "rgba(190, 220, 240, 0.8)";
+                    c.fillStyle = "rgba(206,226,240,0.85)";
                     c.beginPath();
                     c.moveTo(ix - 3, p.y + p.h);
                     c.lineTo(ix, p.y + p.h + il);
@@ -661,48 +948,22 @@
         }
     }
 
-    function drawBergs() {
-        const parallax = cameraX * 0.4;
-        for (const b of bergs) {
-            const bx = ((b.x - parallax) % 3800 + 3800) % 3800 - 300;
-            if (bx > W + 200) continue;
-            ctx.fillStyle = "rgba(240, 249, 253, 0.85)";
-            ctx.beginPath();
-            ctx.moveTo(bx, 448);
-            ctx.lineTo(bx + b.w * b.mid * 0.6, b.peak + 40);
-            ctx.lineTo(bx + b.w * b.mid, b.peak);
-            ctx.lineTo(bx + b.w * b.notch, b.peak + 26);
-            ctx.lineTo(bx + b.w * 0.8, b.peak + 14);
-            ctx.lineTo(bx + b.w, 448);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = "rgba(168, 205, 230, 0.55)";
-            ctx.beginPath();
-            ctx.moveTo(bx + b.w * b.mid, b.peak);
-            ctx.lineTo(bx + b.w, 448);
-            ctx.lineTo(bx + b.w * 0.55, 448);
-            ctx.closePath();
-            ctx.fill();
-        }
-    }
-
-    function drawWaterBase(time) {
+    // ---- Water -------------------------------------------------------------
+    function drawWaterBase(pal) {
         const x0 = cameraX - 20, x1 = cameraX + W + 20;
         const g = ctx.createLinearGradient(0, WATER_TOP, 0, H);
-        g.addColorStop(0, "#4187ae");
-        g.addColorStop(1, "#123c5c");
+        g.addColorStop(0, rgb(pal.water[0]));
+        g.addColorStop(1, rgb(pal.water[1]));
         ctx.fillStyle = g;
         ctx.fillRect(x0, WATER_TOP, x1 - x0, H - WATER_TOP);
     }
 
-    function drawWaterOverlay(time) {
+    function drawWaterOverlay(pal, time) {
         const x0 = cameraX - 20, x1 = cameraX + W + 20;
-        // Murky translucent layer — submerged hunters show through as shadows
-        ctx.fillStyle = "rgba(21, 74, 108, 0.55)";
+        ctx.fillStyle = rgb(pal.water[1], 0.5);
         ctx.fillRect(x0, WATER_TOP, x1 - x0, H - WATER_TOP);
 
-        // Wave crest along the waterline
-        ctx.strokeStyle = "rgba(236, 248, 252, 0.65)";
+        ctx.strokeStyle = rgb(pal.particle, 0.6);
         ctx.lineWidth = 3;
         ctx.beginPath();
         for (let x = x0; x <= x1; x += 14) {
@@ -711,9 +972,8 @@
         }
         ctx.stroke();
 
-        // Lighter painterly wave bands
         for (let b = 0; b < 2; b++) {
-            ctx.fillStyle = `rgba(126, 184, 212, ${0.18 - b * 0.06})`;
+            ctx.fillStyle = rgb(pal.light, 0.14 - b * 0.05);
             ctx.beginPath();
             const base = WATER_TOP + 7 + b * 8;
             ctx.moveTo(x0, base);
@@ -727,39 +987,33 @@
         }
     }
 
-    function drawSplashes() {
+    function drawSplashes(pal) {
         for (const s of splashes) {
             const prog = s.t / 0.7;
             const a = 0.85 * (1 - prog);
             for (let i = 0; i < 6; i++) {
                 const dx = (i - 2.5) * 9 * s.scale;
                 const rise = Math.sin(Math.min(prog * 1.3, 1) * Math.PI) * (26 + (i % 3) * 8) * s.scale;
-                ell(s.x + dx, WATER_TOP - rise, (4.5 - prog * 3) * s.scale, (3.5 - prog * 2.4) * s.scale, 0, "#eef8fc", a);
+                ell(s.x + dx, WATER_TOP - rise, (4.5 - prog * 3) * s.scale, (3.5 - prog * 2.4) * s.scale, 0, rgb(pal.particle), a);
             }
         }
     }
 
+    // ---- Painterly creatures (unchanged silhouettes, palette-graded) -------
     function drawPenguin(p) {
         const f = p.facing;
         const cx = p.x + p.w / 2;
         const cy = p.y + p.h / 2;
-        // tail
         ell(cx - f * 10, cy + 7, 8, 12, f * 0.5, "#16202b", 0.9);
-        // body
         ell(cx, cy, p.w / 2, p.h / 2, f * 0.06, "#1d2836");
         ell(cx - f * 4, cy - 6, p.w / 2 - 6, p.h / 2 - 9, f * 0.16, "#3c516b", 0.45);
-        // belly
         ell(cx + f * 3.5, cy + 5, p.w / 3, p.h / 3 + 2, 0, "#f3efe3", 0.95);
         ell(cx + f * 3, cy + 3, p.w / 4, p.h / 4, 0, "#fffdf4", 0.7);
-        // emperor-penguin cheek patch
         ell(cx + f * 6, p.y + 12, 4.5, 6.5, f * 0.4, "#f0bd53", 0.85);
-        // flipper
         ell(cx - f * 9, cy + 1, 4.5, 13, f * 0.28, "#131c26", 0.95);
-        // eye
         const ex = cx + f * 7;
         ell(ex, p.y + 9, 2.2, 2.2, 0, "#0b1016");
         ell(ex + f * 0.7, p.y + 8.4, 0.8, 0.8, 0, "#e8eef2", 0.9);
-        // beak
         ctx.fillStyle = "#d98a3d";
         const bx = f === 1 ? p.x + p.w - 3 : p.x + 3;
         ctx.beginPath();
@@ -768,14 +1022,12 @@
         ctx.lineTo(bx, p.y + 17.5);
         ctx.closePath();
         ctx.fill();
-        // feet
         ctx.fillStyle = "#cf8b45";
         ctx.beginPath(); ctx.ellipse(p.x + 8, p.y + p.h - 2, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.ellipse(p.x + p.w - 8, p.y + p.h - 2, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
     }
 
     function drawJaws(hx, hy, d, size, bodyColor) {
-        // open jaws with pink mouth and teeth
         ctx.fillStyle = "#b95f6e";
         ctx.beginPath();
         ctx.moveTo(hx, hy);
@@ -800,7 +1052,6 @@
     function drawSeal(e) {
         const d = e.dir, cx = e.x + e.w / 2, cy = e.y + e.h / 2;
         const open = e.mode === "lunge" || e.mode === "carry";
-        // rear flippers
         const tx = d === 1 ? e.x + 5 : e.x + e.w - 5;
         ctx.fillStyle = "#7c8d9b";
         ctx.beginPath();
@@ -809,17 +1060,13 @@
         ctx.lineTo(tx - d * 13, cy + 12);
         ctx.closePath();
         ctx.fill();
-        // sinuous body
         ell(cx, cy, e.w / 2, e.h / 2, d * 0.04, "#8b9dab");
         ell(cx, cy - e.h * 0.16, e.w / 2 * 0.9, e.h / 2 * 0.6, d * 0.04, "#5f7488", 0.8);
         ell(cx, cy + e.h * 0.2, e.w / 2 * 0.72, e.h / 2 * 0.45, 0, "#cbd5dc", 0.85);
-        // leopard spots
         for (let i = 0; i < 9; i++) {
             ell(e.x + e.w * (0.16 + i * 0.078), cy + ((i % 3) - 1) * 5.5, 2.6, 1.8, 0.6, "#43556a", 0.5);
         }
-        // fore flipper
         ell(cx - d * e.w * 0.06, cy + e.h * 0.34, 10, 4.5, d * 0.5, "#5c7083", 0.9);
-        // head (leopard seals have a big reptilian head)
         const hx = d === 1 ? e.x + e.w - 12 : e.x + 12;
         const hy = e.y + e.h * 0.26;
         ell(hx, hy, 13.5, 10.5, 0, "#8b9dab");
@@ -831,14 +1078,12 @@
             ctx.fillStyle = "#33414e";
             ctx.beginPath(); ctx.arc(hx + d * 17, hy + 1, 1.3, 0, Math.PI * 2); ctx.fill();
         }
-        // eye
         ell(hx + d * 4, hy - 3.5, 2, 2, 0, "#101820");
     }
 
     function drawShark(e) {
         const d = e.dir, cx = e.x + e.w / 2, cy = e.y + e.h / 2;
         const open = e.mode === "lunge" || e.mode === "carry";
-        // tail fin
         const tx = d === 1 ? e.x + 6 : e.x + e.w - 6;
         ctx.fillStyle = "#54687c";
         ctx.beginPath();
@@ -848,11 +1093,9 @@
         ctx.lineTo(tx - d * 18, cy + e.h * 0.42);
         ctx.closePath();
         ctx.fill();
-        // torpedo body
         ell(cx, cy, e.w / 2, e.h / 2 * 0.82, d * 0.05, "#75899b");
         ell(cx, cy - e.h * 0.14, e.w / 2 * 0.92, e.h / 2 * 0.5, d * 0.05, "#4e6274", 0.85);
         ell(cx + d * e.w * 0.06, cy + e.h * 0.18, e.w / 2 * 0.78, e.h / 2 * 0.4, 0, "#dde6ec", 0.9);
-        // dorsal fin
         ctx.fillStyle = "#4e6274";
         ctx.beginPath();
         ctx.moveTo(cx - d * e.w * 0.02, e.y + e.h * 0.14);
@@ -860,9 +1103,7 @@
         ctx.lineTo(cx - d * e.w * 0.26, e.y + e.h * 0.2);
         ctx.closePath();
         ctx.fill();
-        // pectoral fin
         ell(cx - d * e.w * 0.04, cy + e.h * 0.34, 14, 5.5, d * 0.55, "#5d7284", 0.9);
-        // gill slits
         ctx.strokeStyle = "rgba(40, 56, 70, 0.55)";
         ctx.lineWidth = 1.6;
         for (let i = 0; i < 3; i++) {
@@ -871,7 +1112,6 @@
             ctx.arc(gx, cy - 2, 8, d === 1 ? -0.5 : Math.PI - 0.7, d === 1 ? 0.7 : Math.PI + 0.5);
             ctx.stroke();
         }
-        // head + jaws
         const hx = d === 1 ? e.x + e.w - 14 : e.x + 14;
         const hy = cy - e.h * 0.05;
         if (open) {
@@ -884,14 +1124,12 @@
             ctx.lineTo(hx + d * 11, hy + e.h * 0.14);
             ctx.stroke();
         }
-        // eye
         ell(hx - d * 2, hy - e.h * 0.16, 2.6, 2.6, 0, "#0d1319");
     }
 
     function drawOrca(e) {
         const d = e.dir, cx = e.x + e.w / 2, cy = e.y + e.h / 2;
         const open = e.mode === "lunge" || e.mode === "carry";
-        // tail flukes
         const tx = d === 1 ? e.x + 8 : e.x + e.w - 8;
         ctx.fillStyle = "#0e141d";
         ctx.beginPath();
@@ -901,13 +1139,10 @@
         ctx.lineTo(tx - d * 30, cy + e.h * 0.42);
         ctx.closePath();
         ctx.fill();
-        // body
         ell(cx, cy, e.w / 2, e.h / 2 * 0.88, d * 0.04, "#10161f");
         ell(cx, cy - e.h * 0.16, e.w / 2 * 0.9, e.h / 2 * 0.5, d * 0.04, "#2a3646", 0.6);
-        // white belly and flank patch
         ell(cx + d * e.w * 0.05, cy + e.h * 0.26, e.w / 2 * 0.72, e.h / 2 * 0.34, 0, "#eef3f6", 0.95);
         ell(cx - d * e.w * 0.1, cy + e.h * 0.1, e.w * 0.09, e.h * 0.16, d * 0.9, "#e7edf1", 0.85);
-        // tall dorsal fin
         ctx.fillStyle = "#0e141d";
         ctx.beginPath();
         ctx.moveTo(cx - d * e.w * 0.02, e.y + e.h * 0.1);
@@ -915,12 +1150,9 @@
         ctx.lineTo(cx - d * e.w * 0.22, e.y + e.h * 0.16);
         ctx.closePath();
         ctx.fill();
-        // pectoral paddle
         ell(cx + d * e.w * 0.02, cy + e.h * 0.4, 18, 8, d * 0.6, "#10161f");
-        // head + jaws
         const hx = d === 1 ? e.x + e.w - 20 : e.x + 20;
         const hy = cy - e.h * 0.02;
-        // white eye patch
         ell(hx - d * 6, hy - e.h * 0.22, 8.5, 4.5, d * 0.45, "#eef3f6", 0.95);
         if (open) {
             drawJaws(hx + d * 2, hy + e.h * 0.12, d, 18, "#10161f");
@@ -932,7 +1164,6 @@
             ctx.lineTo(hx + d * 16, hy + e.h * 0.12);
             ctx.stroke();
         }
-        // eye
         ell(hx - d * 2, hy - e.h * 0.12, 2.4, 2.4, 0, "#05080c");
     }
 
@@ -968,7 +1199,6 @@
         ctx.moveTo(px, g.y + g.h);
         ctx.quadraticCurveTo(px - 2, g.y + g.h / 2, px, g.y);
         ctx.stroke();
-        // waving painterly flag
         const wave = Math.sin(time * 3) * 4;
         ctx.fillStyle = "#c8452f";
         ctx.beginPath();
@@ -986,67 +1216,119 @@
         ctx.fill();
     }
 
-    // Soft snowflake sprite
-    const flake = document.createElement("canvas");
-    flake.width = 12; flake.height = 12;
-    (function paintFlake() {
-        const c = flake.getContext("2d");
-        const g = c.createRadialGradient(6, 6, 0.5, 6, 6, 6);
-        g.addColorStop(0, "rgba(255,255,255,0.95)");
-        g.addColorStop(1, "rgba(255,255,255,0)");
-        c.fillStyle = g;
-        c.fillRect(0, 0, 12, 12);
+    function drawSnow(pal, time) {
+        ctx.fillStyle = rgb(pal.particle);
+        for (let i = 0; i < 46; i++) {
+            const fx = (((i * 97 + Math.sin(time * 0.7 + i) * 30) % W) + W) % W;
+            const fy = (i * 53 + time * (22 + (i % 4) * 12)) % H;
+            ctx.globalAlpha = 0.55 + (i % 3) * 0.15;
+            ctx.beginPath();
+            ctx.arc(fx, fy, 1.4 + (i % 3), 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    // ---- Global colour grading: atmosphere + light following the sun -------
+    function drawGrade(pal, body) {
+        ctx.save();
+        // hue push toward the palette's fog family (breaks pure gradients)
+        ctx.globalCompositeOperation = "overlay";
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = rgb(pal.fog);
+        ctx.fillRect(0, 0, W, H);
+
+        // directional light glow from the sun/moon position
+        ctx.globalCompositeOperation = "soft-light";
+        ctx.globalAlpha = body.isDay ? 0.55 : 0.35;
+        const lg = ctx.createRadialGradient(body.x, body.y, 20, body.x, body.y, W * 0.95);
+        lg.addColorStop(0, rgb(pal.light));
+        lg.addColorStop(1, rgb(pal.light, 0));
+        ctx.fillStyle = lg;
+        ctx.fillRect(0, 0, W, H);
+
+        // soft shadow falloff on the side away from the light
+        ctx.globalCompositeOperation = "multiply";
+        ctx.globalAlpha = 0.16;
+        const shadowSide = body.x < W / 2 ? W : 0;
+        const sg = ctx.createLinearGradient(body.x, 0, shadowSide, 0);
+        sg.addColorStop(0, "rgb(255,255,255)");
+        sg.addColorStop(1, rgb(pal.iceShadow));
+        ctx.fillStyle = sg;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+
+        // atmospheric haze thickening toward the waterline horizon
+        const hg = ctx.createLinearGradient(0, WATER_TOP - 140, 0, WATER_TOP);
+        hg.addColorStop(0, rgb(pal.fog, 0));
+        hg.addColorStop(1, rgb(pal.fog, 0.22));
+        ctx.fillStyle = hg;
+        ctx.fillRect(0, WATER_TOP - 140, W, 140);
+    }
+
+    // ---- Procedural paper/grain overlay ------------------------------------
+    const grainPattern = (function makeGrain() {
+        const tile = document.createElement("canvas");
+        tile.width = 128; tile.height = 128;
+        const c = tile.getContext("2d");
+        const img = c.createImageData(128, 128);
+        for (let i = 0; i < img.data.length; i += 4) {
+            const v = 128 + (Math.random() - 0.5) * 64;
+            img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+            img.data[i + 3] = 255;
+        }
+        c.putImageData(img, 0, 0);
+        return ctx.createPattern(tile, "repeat");
     })();
 
+    function drawGrain() {
+        ctx.save();
+        ctx.globalCompositeOperation = "overlay";
+        ctx.globalAlpha = 0.05;
+        ctx.fillStyle = grainPattern;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+    }
+
+    // ---- Frame -------------------------------------------------------------
     function render() {
         const time = performance.now() / 1000;
-        ctx.clearRect(0, 0, W, H);
-        ctx.drawImage(skyCanvas, 0, 0);
+        const hour = currentHour();
+        pal = samplePalette(hour);
+        const body = skyBody(hour);
 
-        if (!level) return;
+        ctx.clearRect(0, 0, W, H);
+        drawSky(pal, body, time);
+        drawBody(pal, body);
+        drawStars(pal, hour, time);
+        drawClouds(pal, time);
+
+        if (!level) { drawGrain(); return; }
 
         drawBergs();
 
         ctx.save();
         ctx.translate(-cameraX, 0);
-
-        drawWaterBase(time);
-
-        // Hunters (and a dragged penguin) live below the murky overlay,
-        // so submerged bodies show through as looming shadows.
+        drawWaterBase(pal);
         drawEnemies();
         if (state === "caught") drawPenguin(player);
+        drawWaterOverlay(pal, time);
+        drawSplashes(pal);
 
-        drawWaterOverlay(time);
-        drawSplashes();
-
-        // Ice terrain
         const sx = Math.max(0, Math.min(cameraX, level.width - W));
         ctx.drawImage(terrainCanvas, sx, 0, W, H, sx, 0, W, H);
 
-        for (const c of level.coins) {
-            if (!c.collected) drawFish(c);
-        }
-
+        for (const c of level.coins) if (!c.collected) drawFish(c);
         drawGoal(time);
 
         if (state !== "caught") {
-            if (invincibleTimer <= 0 || Math.floor(invincibleTimer * 10) % 2 === 0) {
-                drawPenguin(player);
-            }
+            if (invincibleTimer <= 0 || Math.floor(invincibleTimer * 10) % 2 === 0) drawPenguin(player);
         }
-
         ctx.restore();
 
-        // Falling snow (screen space)
-        for (let i = 0; i < 46; i++) {
-            const fx = (((i * 97 + Math.sin(time * 0.7 + i) * 30) % W) + W) % W;
-            const fy = (i * 53 + time * (22 + (i % 4) * 12)) % H;
-            const s = 5 + (i % 3) * 3;
-            ctx.drawImage(flake, fx, fy, s, s);
-        }
-
-        ctx.drawImage(vignetteCanvas, 0, 0);
+        drawSnow(pal, time);
+        drawGrade(pal, body);
+        drawGrain();
     }
 
     // ---- Main loop ---------------------------------------------------------

@@ -3,6 +3,7 @@
     const ctx = canvas.getContext("2d");
     const W = canvas.width;
     const H = canvas.height;
+    const CFG = window.GAME_CONFIG;
 
     const scoreEl = document.getElementById("score");
     const livesEl = document.getElementById("lives");
@@ -167,7 +168,6 @@
         const perm = new Uint8Array(512);
         const permMod12 = new Uint8Array(512);
         for (let i = 0; i < 512; i++) { perm[i] = p[i & 255]; permMod12[i] = perm[i] % 12; }
-        const grad = [1,1,-1,1,1,-1,-1,-1,1,0,-1,0,0,1,0,-1];
         const g3 = [1,1,0,-1,1,0,1,-1,0,-1,-1,0,1,0,1,-1,0,1,1,0,-1,-1,0,-1,0,1,1,0,-1,1,0,1,-1,0,-1,-1];
         const F2 = 0.5 * (Math.sqrt(3) - 1);
         const G2 = (3 - Math.sqrt(3)) / 6;
@@ -553,31 +553,9 @@
     }
 
     // ======================================================================
-    //  Time-of-day palette system (GRIS-style, coupled to the system clock)
+    //  Time-of-day palette system (config-driven, coupled to the clock)
     // ======================================================================
-    // Six keyframe palettes; the live palette is interpolated continuously
-    // between the two bracketing keyframes for the current hour. Each defines
-    // one dominant colour family broken by a single saturated accent.
-    const PALETTE_KEYS = [
-        { h: 0,  sky: [[0,[12,16,34]],[0.5,[22,30,58]],[0.78,[40,46,78]],[1,[30,40,66]]],
-          ice:[150,168,196], iceShadow:[64,82,120], iceLight:[206,220,240], light:[196,208,236],
-          fog:[26,34,60], particle:[210,224,246], water:[[24,50,84],[8,20,42]], accent:[226,232,252] },
-        { h: 5,  sky: [[0,[42,44,88]],[0.45,[98,86,132]],[0.72,[196,138,138]],[1,[238,198,168]]],
-          ice:[196,196,214], iceShadow:[116,106,138], iceLight:[240,224,214], light:[248,206,178],
-          fog:[150,128,148], particle:[244,224,224], water:[[52,74,110],[24,40,68]], accent:[250,192,146] },
-        { h: 8,  sky: [[0,[110,150,190]],[0.5,[172,202,224]],[0.76,[220,224,224]],[1,[228,238,244]]],
-          ice:[214,230,240], iceShadow:[118,150,178], iceLight:[248,252,255], light:[255,244,222],
-          fog:[176,200,220], particle:[236,246,252], water:[[58,120,156],[20,58,92]], accent:[255,236,196] },
-        { h: 12, sky: [[0,[92,148,206]],[0.5,[160,200,236]],[0.8,[212,232,246]],[1,[228,242,250]]],
-          ice:[224,238,248], iceShadow:[130,166,196], iceLight:[255,255,255], light:[255,252,240],
-          fog:[190,216,236], particle:[244,250,255], water:[[64,138,176],[18,66,102]], accent:[255,250,232] },
-        { h: 18, sky: [[0,[54,70,116]],[0.4,[178,116,120]],[0.7,[238,150,94]],[1,[250,198,120]]],
-          ice:[236,206,196], iceShadow:[122,92,116], iceLight:[252,224,190], light:[255,176,108],
-          fog:[196,128,108], particle:[252,214,190], water:[[92,88,120],[38,42,72]], accent:[255,146,74] },
-        { h: 21, sky: [[0,[22,26,56]],[0.5,[52,54,94]],[0.78,[92,84,124]],[1,[128,112,142]]],
-          ice:[166,174,202], iceShadow:[82,86,124], iceLight:[214,214,236], light:[196,180,206],
-          fog:[62,62,98], particle:[214,214,238], water:[[38,50,84],[16,26,50]], accent:[212,182,216] },
-    ];
+    const PALETTE_KEYS = CFG.palettes;
 
     function lerp(a, b, t) { return a + (b - a) * t; }
     function lerpRGB(a, b, t) { return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]; }
@@ -616,10 +594,12 @@
         };
     }
 
-    // Sun (05–19, incl. twilight) / moon (19–05) arcing across the sky.
+    // Sun / crescent moon arcing across the sky with the clock.
     function skyBody(hour) {
-        const isDay = hour >= 5 && hour < 19;
-        const frac = isDay ? (hour - 5) / 14 : (((hour - 19) + 24) % 24) / 10;
+        const ds = CFG.body.dayStart, de = CFG.body.dayEnd;
+        const dayLen = de - ds, nightLen = 24 - dayLen;
+        const isDay = hour >= ds && hour < de;
+        const frac = isDay ? (hour - ds) / dayLen : (((hour - de) + 24) % 24) / nightLen;
         const alt = Math.sin(frac * Math.PI);
         return { x: 40 + frac * (W - 80), y: 300 - alt * 240, alt, isDay, frac };
     }
@@ -644,22 +624,23 @@
         ctx.restore();
     }
 
-    // ---- Noise-based iceberg silhouettes (unique seed each) ----------------
-    function makeBergShape(seed) {
+    // ---- Noise-based iceberg / mountain silhouettes (unique seed each) ------
+    function makeBergShape(seed, opt, scale) {
+        opt = opt || {}; scale = scale || 1;
         const n = makeNoise2D(seed);
         const r = rng(seed * 131 + 7);
-        const w = 110 + r() * 180;
-        const h = 80 + r() * 140;
-        const peakX = 0.28 + r() * 0.44;   // asymmetric peak position
-        const jag = 0.10 + r() * 0.18;     // edge roughness
+        const w = lerp(opt.wMin != null ? opt.wMin : 110, opt.wMax != null ? opt.wMax : 290, r()) * scale;
+        const h = lerp(opt.hMin != null ? opt.hMin : 80, opt.hMax != null ? opt.hMax : 220, r()) * scale;
+        const peakX = lerp(opt.peakMin != null ? opt.peakMin : 0.28, opt.peakMax != null ? opt.peakMax : 0.72, r());
+        const jag = lerp(opt.jagMin != null ? opt.jagMin : 0.10, opt.jagMax != null ? opt.jagMax : 0.28, r());
         const segs = 16 + (r() * 10 | 0);
         const pts = [{ x: 0, y: 0 }];
         for (let i = 1; i < segs; i++) {
             const fx = i / segs;
             const tri = fx < peakX ? fx / peakX : 1 - (fx - peakX) / (1 - peakX);
             let y = -h * Math.pow(Math.max(tri, 0), 0.85);
-            y += n(fx * 4.0, seed * 0.01) * h * jag;      // broad undulation
-            y += n(fx * 12.0, 3) * h * jag * 0.4;         // fine jagged detail
+            y += n(fx * 4.0, seed * 0.01) * h * jag;
+            y += n(fx * 12.0, 3) * h * jag * 0.4;
             y = Math.min(y, -2);
             const x = fx * w + n(fx * 6, 7) * 7;
             pts.push({ x, y });
@@ -668,9 +649,10 @@
         return { w, h, pts };
     }
 
-    // Paint an iceberg to its own sprite in neutral ice tones with brush strokes.
+    // Paint a silhouette to its own sprite in NEUTRAL ice tones with brush
+    // strokes — baked once, then cheaply re-tinted per palette bucket.
     function paintBerg(shape, seed) {
-        const pad = 10;
+        const pad = 12;
         const cw = Math.ceil(shape.w) + pad * 2;
         const ch = Math.ceil(shape.h) + pad * 2;
         const cvs = document.createElement("canvas");
@@ -693,7 +675,8 @@
         c.fillStyle = g;
         c.fillRect(0, 0, cw, ch);
 
-        for (let i = 0; i < 170; i++) {
+        const count = Math.max(120, shape.w * 0.9 | 0);
+        for (let i = 0; i < count; i++) {
             const bx = pad + r() * shape.w;
             const by = baseY - r() * shape.h;
             const sh = r();
@@ -711,7 +694,6 @@
         c.globalAlpha = 1;
         c.restore();
 
-        // faint snow rim along the sunlit ridge
         c.strokeStyle = "rgba(255,255,255,0.5)";
         c.lineWidth = 2;
         c.beginPath();
@@ -722,26 +704,82 @@
         return { cvs, pad, baseY };
     }
 
-    const BERG_SPACING = 250;
-    const BERG_COUNT = 16;
-    const BERG_SPAN = BERG_COUNT * BERG_SPACING;
-    const bergs = [];
-    (function makeBergs() {
-        const r = rng(21);
-        for (let i = 0; i < BERG_COUNT; i++) {
-            const seed = 100 + i * 13;
-            const shape = makeBergShape(seed);
-            bergs.push({ x: i * BERG_SPACING + r() * 90, sprite: paintBerg(shape, seed), base: 446 + r() * 12 });
+    // Tint a neutral sprite for atmospheric perspective: wash toward the
+    // palette ice/fog colour, blur for distance. Cached per palette bucket.
+    function tintSprite(neu, tier, p) {
+        const s = neu.cvs, cw = s.width, ch = s.height;
+        const c = document.createElement("canvas");
+        c.width = cw; c.height = ch;
+        const g = c.getContext("2d");
+        if (tier.blur > 0) g.filter = `blur(${tier.blur}px)`;
+        g.drawImage(s, 0, 0);
+        g.filter = "none";
+        g.globalCompositeOperation = "source-atop";
+        const grad = g.createLinearGradient(0, 0, 0, ch);
+        grad.addColorStop(0, rgb(p.iceLight));
+        grad.addColorStop(1, rgb(p.ice));
+        g.globalAlpha = 0.5;
+        g.fillStyle = grad;
+        g.fillRect(0, 0, cw, ch);
+        if (tier.haze > 0) {
+            g.globalAlpha = tier.haze;
+            g.fillStyle = rgb(p.fog);
+            g.fillRect(0, 0, cw, ch);
         }
-    })();
+        if (tier.darken) {
+            g.globalAlpha = tier.darken;
+            g.fillStyle = rgb(p.iceShadow);
+            g.fillRect(0, 0, cw, ch);
+        }
+        g.globalAlpha = 1;
+        g.globalCompositeOperation = "source-over";
+        return { cvs: c, pad: neu.pad, baseY: neu.baseY };
+    }
 
-    function drawBergs() {
-        const parallax = cameraX * 0.42;
-        for (const b of bergs) {
-            const bx = ((b.x - parallax) % BERG_SPAN + BERG_SPAN) % BERG_SPAN - 300;
-            if (bx > W + 240 || bx < -340) continue;
-            const s = b.sprite;
-            ctx.drawImage(s.cvs, bx - s.pad, b.base - s.baseY);
+    // Build the depth tiers once (neutral sprites + instance placement).
+    const tiers = CFG.tiers.map(def => {
+        const r = rng((def.seedBase || 1000) + 91);
+        const instances = [];
+        for (let i = 0; i < def.count; i++) {
+            const seed = (def.seedBase || 1000) + i * 13;
+            const shape = makeBergShape(seed, def.shape, def.sizeScale);
+            const neutral = paintBerg(shape, seed);
+            instances.push({
+                x: i * def.spacing + r() * def.spacing * 0.4,
+                base: def.baseY + (r() - 0.5) * 2 * def.jitterY,
+                phase: r() * Math.PI * 2,
+                neutral, tinted: null,
+            });
+        }
+        return Object.assign({}, def, { instances, span: def.count * def.spacing });
+    });
+
+    // Re-tint cached tiers only when the palette bucket changes (or on resize).
+    let lastTintSig = null;
+    function ensureTint(p, hour) {
+        const sig = Math.floor(hour * (60 / (CFG.retintMinutes || 10)));
+        if (sig === lastTintSig) return;
+        lastTintSig = sig;
+        for (const tier of tiers) {
+            for (const inst of tier.instances) inst.tinted = tintSprite(inst.neutral, tier, p);
+        }
+        buildSky(p);
+        buildVignette(p);
+    }
+
+    function drawTier(tier, time) {
+        const parallax = cameraX * tier.parallax;
+        const span = tier.span;
+        for (const inst of tier.instances) {
+            if (!inst.tinted) continue;
+            const bx = ((inst.x - parallax) % span + span) % span - 340;
+            if (bx > W + 320 || bx < -380) continue;
+            const bob = tier.bob ? Math.sin(time * 0.5 + inst.phase) * tier.bob : 0;
+            const t = inst.tinted;
+            ctx.save();
+            if (tier.alpha != null) ctx.globalAlpha = tier.alpha;
+            ctx.drawImage(t.cvs, bx - t.pad, inst.base - t.baseY + bob);
+            ctx.restore();
         }
     }
 
@@ -766,7 +804,6 @@
         }
     })();
 
-    // Clouds: rings of points displaced by noise → soft irregular silhouettes.
     const clouds = [];
     (function makeClouds() {
         const r = rng(333);
@@ -791,30 +828,35 @@
         }
     })();
 
-    function drawSky(pal, body, time) {
-        const g = ctx.createLinearGradient(0, 0, 0, WATER_TOP);
-        for (const s of pal.sky) g.addColorStop(s[0], rgb(s[1]));
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, W, H);
-
-        // Break the linear bands with painterly horizontal strokes.
+    // Static sky (gradient + painterly strokes) — baked once per palette
+    // bucket to an offscreen canvas, then blitted each frame.
+    const skyCanvas = document.createElement("canvas");
+    skyCanvas.width = W; skyCanvas.height = H;
+    const skyCtx = skyCanvas.getContext("2d");
+    function buildSky(p) {
+        const c = skyCtx;
+        c.clearRect(0, 0, W, H);
+        const g = c.createLinearGradient(0, 0, 0, WATER_TOP);
+        for (const s of p.sky) g.addColorStop(s[0], rgb(s[1]));
+        c.fillStyle = g;
+        c.fillRect(0, 0, W, H);
         for (const s of skyStrokes) {
-            const col = lerpRGB(pal.fog, pal.light, s.tone);
-            ctx.save();
-            ctx.globalAlpha = s.a;
-            ctx.fillStyle = rgb(col);
-            ctx.translate(s.x, s.y);
-            ctx.rotate(s.rot);
-            ctx.beginPath();
-            ctx.ellipse(0, 0, s.len / 2, s.th / 2, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
+            const col = lerpRGB(p.fog, p.light, s.tone);
+            c.save();
+            c.globalAlpha = s.a;
+            c.fillStyle = rgb(col);
+            c.translate(s.x, s.y);
+            c.rotate(s.rot);
+            c.beginPath();
+            c.ellipse(0, 0, s.len / 2, s.th / 2, 0, 0, Math.PI * 2);
+            c.fill();
+            c.restore();
         }
     }
 
-    function drawBody(pal, body) {
+    function drawBody(p, body) {
         const { x, y, alt, isDay } = body;
-        const col = isDay ? pal.accent : [232, 238, 252];
+        const col = isDay ? p.accent : [232, 238, 252];
         const R = isDay ? 24 + (1 - alt) * 12 : 20;
         const halo = ctx.createRadialGradient(x, y, 2, x, y, R * 4.2);
         halo.addColorStop(0, rgb(col, 0.5));
@@ -824,13 +866,12 @@
         ctx.fillStyle = rgb(col, 0.96);
         ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
         if (!isDay) {
-            // fake a crescent by overlaying a sky-coloured disc
-            ctx.fillStyle = rgb(pal.sky[0][1]);
+            ctx.fillStyle = rgb(p.sky[0][1]);
             ctx.beginPath(); ctx.arc(x + R * 0.45, y - R * 0.3, R * 0.92, 0, Math.PI * 2); ctx.fill();
         }
     }
 
-    function drawStars(pal, hour, time) {
+    function drawStars(hour, time) {
         const a = starAlpha(hour);
         if (a <= 0) return;
         ctx.fillStyle = "#ffffff";
@@ -844,21 +885,44 @@
         ctx.globalAlpha = 1;
     }
 
-    function drawClouds(pal, time) {
-        const col = lerpRGB(pal.fog, pal.particle, 0.5);
+    function drawClouds(p, time) {
+        const col = lerpRGB(p.fog, p.particle, 0.5);
         for (const cl of clouds) {
-            const parallax = cameraX * 0.25;
+            const parallax = cameraX * 0.22;
             const cx = ((cl.x - time * cl.speed - parallax) % 2600 + 2600) % 2600 - 400;
             if (cx > W + 260 || cx < -300) continue;
             for (let pass = 0; pass < 2; pass++) {
                 ctx.globalAlpha = pass === 0 ? 0.16 : 0.1;
-                ctx.fillStyle = rgb(pass === 0 ? col : pal.light);
+                ctx.fillStyle = rgb(pass === 0 ? col : p.light);
                 for (const pf of cl.puffs) {
                     ctx.beginPath();
                     ctx.ellipse(cx + pf.dx, cl.y + pf.dy - pass * 3, pf.rx, pf.ry, 0, 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    // ---- Drifting, pulsing fog bands between the planes --------------------
+    function drawFogBand(fb, p, time) {
+        const a = Math.max(0, fb.baseAlpha + Math.sin(time * fb.pulseSpeed) * fb.pulse);
+        const g = ctx.createLinearGradient(0, fb.y, 0, fb.y + fb.h);
+        g.addColorStop(0, rgb(p.fog, 0));
+        g.addColorStop(0.5, rgb(p.fog, a));
+        g.addColorStop(1, rgb(p.fog, 0));
+        ctx.fillStyle = g;
+        ctx.fillRect(0, fb.y, W, fb.h);
+
+        ctx.globalAlpha = a * 0.8;
+        ctx.fillStyle = rgb(p.fog);
+        const wrap = W + 420;
+        for (let k = 0; k < fb.puffs; k++) {
+            const px = ((k * 220 - time * fb.drift) % wrap + wrap) % wrap - 210;
+            const py = fb.y + fb.h * 0.5 + Math.sin(time * 0.3 + k) * 6;
+            ctx.beginPath();
+            ctx.ellipse(px, py, 120 + (k % 3) * 40, fb.h * 0.34, 0, 0, Math.PI * 2);
+            ctx.fill();
         }
         ctx.globalAlpha = 1;
     }
@@ -873,7 +937,6 @@
         const n = makeNoise2D(9001 + idx);
 
         for (const p of level.platforms) {
-            // noisy top edge
             const topPts = [];
             for (let x = p.x; x <= p.x + p.w; x += 8) {
                 const e = n(x * 0.05, p.y * 0.01) * 3 + n(x * 0.15, 7) * 1.5;
@@ -919,7 +982,6 @@
             c.fillRect(p.x, p.y + p.h - 7, p.w, 7);
             c.restore();
 
-            // noise-edged snow cap sitting on the top ridge
             c.beginPath();
             c.moveTo(topPts[0].x, topPts[0].y + 1);
             for (const tp of topPts) {
@@ -948,22 +1010,22 @@
         }
     }
 
-    // ---- Water -------------------------------------------------------------
-    function drawWaterBase(pal) {
+    // ---- Water (shimmering reflections) ------------------------------------
+    function drawWaterBase(p) {
         const x0 = cameraX - 20, x1 = cameraX + W + 20;
         const g = ctx.createLinearGradient(0, WATER_TOP, 0, H);
-        g.addColorStop(0, rgb(pal.water[0]));
-        g.addColorStop(1, rgb(pal.water[1]));
+        g.addColorStop(0, rgb(p.water[0]));
+        g.addColorStop(1, rgb(p.water[1]));
         ctx.fillStyle = g;
         ctx.fillRect(x0, WATER_TOP, x1 - x0, H - WATER_TOP);
     }
 
-    function drawWaterOverlay(pal, time) {
+    function drawWaterOverlay(p, time) {
         const x0 = cameraX - 20, x1 = cameraX + W + 20;
-        ctx.fillStyle = rgb(pal.water[1], 0.5);
+        ctx.fillStyle = rgb(p.water[1], 0.5);
         ctx.fillRect(x0, WATER_TOP, x1 - x0, H - WATER_TOP);
 
-        ctx.strokeStyle = rgb(pal.particle, 0.6);
+        ctx.strokeStyle = rgb(p.particle, 0.6);
         ctx.lineWidth = 3;
         ctx.beginPath();
         for (let x = x0; x <= x1; x += 14) {
@@ -973,7 +1035,7 @@
         ctx.stroke();
 
         for (let b = 0; b < 2; b++) {
-            ctx.fillStyle = rgb(pal.light, 0.14 - b * 0.05);
+            ctx.fillStyle = rgb(p.light, 0.14 - b * 0.05);
             ctx.beginPath();
             const base = WATER_TOP + 7 + b * 8;
             ctx.moveTo(x0, base);
@@ -985,25 +1047,79 @@
             ctx.closePath();
             ctx.fill();
         }
+
+        // wandering specular glints
+        ctx.fillStyle = rgb(p.light, 0.16);
+        for (let i = 0; i < 5; i++) {
+            const gx = x0 + ((i * 260 + time * 30) % (x1 - x0));
+            const gy = WATER_TOP + 14 + (i % 3) * 10 + Math.sin(time * 1.5 + i) * 3;
+            ctx.beginPath();
+            ctx.ellipse(gx, gy, 22 + Math.sin(time + i) * 6, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 
-    function drawSplashes(pal) {
+    function drawSplashes(p) {
         for (const s of splashes) {
             const prog = s.t / 0.7;
             const a = 0.85 * (1 - prog);
             for (let i = 0; i < 6; i++) {
                 const dx = (i - 2.5) * 9 * s.scale;
                 const rise = Math.sin(Math.min(prog * 1.3, 1) * Math.PI) * (26 + (i % 3) * 8) * s.scale;
-                ell(s.x + dx, WATER_TOP - rise, (4.5 - prog * 3) * s.scale, (3.5 - prog * 2.4) * s.scale, 0, rgb(pal.particle), a);
+                ell(s.x + dx, WATER_TOP - rise, (4.5 - prog * 3) * s.scale, (3.5 - prog * 2.4) * s.scale, 0, rgb(p.particle), a);
             }
         }
     }
 
-    // ---- Painterly creatures (unchanged silhouettes, palette-graded) -------
-    function drawPenguin(p) {
+    // ---- Penguin: painterly + idle animation + rimlight + cast shadow ------
+    function penguinScreenX(p) { return p.x - cameraX + p.w / 2; }
+
+    function drawPenguinShadow(p, body) {
+        if (!p.onGround) return;
+        const groundY = p.y + p.h;
+        const dir = body.x < penguinScreenX(p) ? 1 : -1; // opposite the light
+        const stretch = 1 + (1 - Math.max(0, body.alt)) * 0.9;
+        const a = 0.22 * Math.max(0.12, body.alt);
+        ell(p.x + p.w / 2 + dir * 9, groundY + 3, p.w * 0.62 * stretch, 4.5, 0, rgb(pal.iceShadow), a);
+        ell(p.x + p.w / 2 + dir * 9, groundY + 3, p.w * 0.4 * stretch, 3, 0, rgb(pal.iceShadow), a * 0.7);
+    }
+
+    function drawPenguin(p, time, body, plain) {
         const f = p.facing;
+        const idle = !plain;
+        let breathe = 0, wob = 0, blink = false;
+        if (idle) {
+            breathe = Math.sin(time * 2.2) * 0.5;
+            const moving = Math.abs(p.vx) > 12;
+            wob = (p.onGround && !moving) ? Math.sin(time * 1.6) * 0.03 : 0;
+            blink = (time % 3.4) < 0.12;
+        }
+
+        ctx.save();
+        if (idle) {
+            const fx = p.x + p.w / 2, fy = p.y + p.h;
+            ctx.translate(fx, fy);
+            ctx.rotate(wob);
+            ctx.scale(1, 1 - breathe * 0.006);
+            ctx.translate(-fx, -fy);
+        }
+
         const cx = p.x + p.w / 2;
         const cy = p.y + p.h / 2;
+
+        // rimlight in the current light colour on the sun-facing side
+        if (idle && body) {
+            const dir = body.x < penguinScreenX(p) ? -1 : 1;
+            ctx.save();
+            ctx.globalCompositeOperation = "lighter";
+            ctx.globalAlpha = 0.16 * Math.max(0.25, body.alt);
+            ctx.fillStyle = rgb(pal.light);
+            ctx.beginPath();
+            ctx.ellipse(cx + dir * 4, cy, p.w / 2, p.h / 2, f * 0.06, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
         ell(cx - f * 10, cy + 7, 8, 12, f * 0.5, "#16202b", 0.9);
         ell(cx, cy, p.w / 2, p.h / 2, f * 0.06, "#1d2836");
         ell(cx - f * 4, cy - 6, p.w / 2 - 6, p.h / 2 - 9, f * 0.16, "#3c516b", 0.45);
@@ -1012,8 +1128,17 @@
         ell(cx + f * 6, p.y + 12, 4.5, 6.5, f * 0.4, "#f0bd53", 0.85);
         ell(cx - f * 9, cy + 1, 4.5, 13, f * 0.28, "#131c26", 0.95);
         const ex = cx + f * 7;
-        ell(ex, p.y + 9, 2.2, 2.2, 0, "#0b1016");
-        ell(ex + f * 0.7, p.y + 8.4, 0.8, 0.8, 0, "#e8eef2", 0.9);
+        if (blink) {
+            ctx.strokeStyle = "#0b1016";
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(ex - 2.4, p.y + 9);
+            ctx.lineTo(ex + 2.4, p.y + 9);
+            ctx.stroke();
+        } else {
+            ell(ex, p.y + 9, 2.2, 2.2, 0, "#0b1016");
+            ell(ex + f * 0.7, p.y + 8.4, 0.8, 0.8, 0, "#e8eef2", 0.9);
+        }
         ctx.fillStyle = "#d98a3d";
         const bx = f === 1 ? p.x + p.w - 3 : p.x + 3;
         ctx.beginPath();
@@ -1025,6 +1150,8 @@
         ctx.fillStyle = "#cf8b45";
         ctx.beginPath(); ctx.ellipse(p.x + 8, p.y + p.h - 2, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.ellipse(p.x + p.w - 8, p.y + p.h - 2, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
+
+        ctx.restore();
     }
 
     function drawJaws(hx, hy, d, size, bodyColor) {
@@ -1177,17 +1304,24 @@
         }
     }
 
-    function drawFish(c) {
-        ell(c.x + 8, c.y + 10, 8.5, 5, 0.05, "#e08a3c");
-        ell(c.x + 7, c.y + 8.5, 6, 3, 0.05, "#f2b168", 0.8);
+    function drawFish(c, time) {
+        const bob = Math.sin(time * 2.4 + c.x * 0.05) * 1.6;
+        const wig = Math.sin(time * 6 + c.x * 0.05) * 0.12;
+        const y = c.y + bob;
+        ell(c.x + 8, y + 10, 8.5, 5, 0.05, "#e08a3c");
+        ell(c.x + 7, y + 8.5, 6, 3, 0.05, "#f2b168", 0.8);
+        ctx.save();
+        ctx.translate(c.x + 15, y + 10);
+        ctx.rotate(wig);
         ctx.fillStyle = "#c9762f";
         ctx.beginPath();
-        ctx.moveTo(c.x + 15, c.y + 10);
-        ctx.lineTo(c.x + 21, c.y + 4.5);
-        ctx.lineTo(c.x + 21, c.y + 15.5);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(6, -5.5);
+        ctx.lineTo(6, 5.5);
         ctx.closePath();
         ctx.fill();
-        ell(c.x + 4, c.y + 9, 1.4, 1.4, 0, "#5c3210");
+        ctx.restore();
+        ell(c.x + 4, y + 9, 1.4, 1.4, 0, "#5c3210");
     }
 
     function drawGoal(time) {
@@ -1216,62 +1350,107 @@
         ctx.fill();
     }
 
-    function drawSnow(pal, time) {
-        ctx.fillStyle = rgb(pal.particle);
-        for (let i = 0; i < 46; i++) {
-            const fx = (((i * 97 + Math.sin(time * 0.7 + i) * 30) % W) + W) % W;
-            const fy = (i * 53 + time * (22 + (i % 4) * 12)) % H;
-            ctx.globalAlpha = 0.55 + (i % 3) * 0.15;
-            ctx.beginPath();
-            ctx.arc(fx, fy, 1.4 + (i % 3), 0, Math.PI * 2);
-            ctx.fill();
+    // ---- Multi-layer snow with per-particle drift, blur and sine sway ------
+    function makeFlake(soft) {
+        const cv = document.createElement("canvas");
+        cv.width = 16; cv.height = 16;
+        const c = cv.getContext("2d");
+        const g = c.createRadialGradient(8, 8, 0.5, 8, 8, 8);
+        const core = Math.max(0, 1 - soft);
+        g.addColorStop(0, "rgba(255,255,255,0.98)");
+        g.addColorStop(core, "rgba(255,255,255,0.9)");
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        c.fillStyle = g;
+        c.fillRect(0, 0, 16, 16);
+        return cv;
+    }
+
+    const snowLayers = CFG.snow.map((L, li) => {
+        const r = rng(700 + li);
+        const parts = [];
+        for (let i = 0; i < L.count; i++) {
+            parts.push({
+                x: r() * W, y0: r() * H,
+                size: lerp(L.sizeMin, L.sizeMax, r()),
+                speed: lerp(L.speedMin, L.speedMax, r()),
+                amp: L.driftAmp * (0.5 + r()),
+                freq: lerp(L.driftFreqMin, L.driftFreqMax, r()),
+                phase: r() * Math.PI * 2,
+                alpha: lerp(L.alphaMin, L.alphaMax, r()),
+            });
+        }
+        return { def: L, parts, sprite: makeFlake(L.soft) };
+    });
+
+    function drawSnow(p, time) {
+        for (const layer of snowLayers) {
+            const crisp = layer.def.crisp;
+            if (crisp) ctx.fillStyle = rgb(p.particle);
+            for (const pt of layer.parts) {
+                const y = (pt.y0 + time * pt.speed) % (H + 20);
+                const x = ((pt.x + Math.sin(time * pt.freq + pt.phase) * pt.amp) % W + W) % W;
+                ctx.globalAlpha = pt.alpha;
+                if (crisp) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, pt.size, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    const s = pt.size * 3.2;
+                    ctx.drawImage(layer.sprite, x - s / 2, y - s / 2, s, s);
+                }
+            }
         }
         ctx.globalAlpha = 1;
     }
 
-    // ---- Global colour grading: atmosphere + light following the sun -------
-    function drawGrade(pal, body) {
+    // ---- Global grading + coloured vignette + grain ------------------------
+    function drawGrade(p, body) {
         ctx.save();
-        // hue push toward the palette's fog family (breaks pure gradients)
         ctx.globalCompositeOperation = "overlay";
-        ctx.globalAlpha = 0.2;
-        ctx.fillStyle = rgb(pal.fog);
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = rgb(p.fog);
         ctx.fillRect(0, 0, W, H);
 
-        // directional light glow from the sun/moon position
         ctx.globalCompositeOperation = "soft-light";
-        ctx.globalAlpha = body.isDay ? 0.55 : 0.35;
+        ctx.globalAlpha = body.isDay ? 0.5 : 0.32;
         const lg = ctx.createRadialGradient(body.x, body.y, 20, body.x, body.y, W * 0.95);
-        lg.addColorStop(0, rgb(pal.light));
-        lg.addColorStop(1, rgb(pal.light, 0));
+        lg.addColorStop(0, rgb(p.light));
+        lg.addColorStop(1, rgb(p.light, 0));
         ctx.fillStyle = lg;
         ctx.fillRect(0, 0, W, H);
 
-        // soft shadow falloff on the side away from the light
         ctx.globalCompositeOperation = "multiply";
-        ctx.globalAlpha = 0.16;
+        ctx.globalAlpha = 0.14;
         const shadowSide = body.x < W / 2 ? W : 0;
         const sg = ctx.createLinearGradient(body.x, 0, shadowSide, 0);
         sg.addColorStop(0, "rgb(255,255,255)");
-        sg.addColorStop(1, rgb(pal.iceShadow));
+        sg.addColorStop(1, rgb(p.iceShadow));
         ctx.fillStyle = sg;
         ctx.fillRect(0, 0, W, H);
         ctx.restore();
-
-        // atmospheric haze thickening toward the waterline horizon
-        const hg = ctx.createLinearGradient(0, WATER_TOP - 140, 0, WATER_TOP);
-        hg.addColorStop(0, rgb(pal.fog, 0));
-        hg.addColorStop(1, rgb(pal.fog, 0.22));
-        ctx.fillStyle = hg;
-        ctx.fillRect(0, WATER_TOP - 140, W, 140);
     }
 
-    // ---- Procedural paper/grain overlay ------------------------------------
+    // Coloured vignette — also baked per palette bucket.
+    const vignetteCanvas = document.createElement("canvas");
+    vignetteCanvas.width = W; vignetteCanvas.height = H;
+    const vignetteCtx = vignetteCanvas.getContext("2d");
+    function buildVignette(p) {
+        const c = vignetteCtx;
+        c.clearRect(0, 0, W, H);
+        const col = lerpRGB(p.fog, p.iceShadow, CFG.vignette.mixShadow);
+        const g = c.createRadialGradient(W / 2, H / 2, H * 0.42, W / 2, H / 2, H * 1.05);
+        g.addColorStop(0, rgb(col, 0));
+        g.addColorStop(1, rgb(col, CFG.vignette.alpha));
+        c.fillStyle = g;
+        c.fillRect(0, 0, W, H);
+    }
+
     const grainPattern = (function makeGrain() {
+        const n = CFG.grain.tile;
         const tile = document.createElement("canvas");
-        tile.width = 128; tile.height = 128;
+        tile.width = n; tile.height = n;
         const c = tile.getContext("2d");
-        const img = c.createImageData(128, 128);
+        const img = c.createImageData(n, n);
         for (let i = 0; i < img.data.length; i += 4) {
             const v = 128 + (Math.random() - 0.5) * 64;
             img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
@@ -1284,50 +1463,63 @@
     function drawGrain() {
         ctx.save();
         ctx.globalCompositeOperation = "overlay";
-        ctx.globalAlpha = 0.05;
+        ctx.globalAlpha = CFG.grain.alpha;
         ctx.fillStyle = grainPattern;
         ctx.fillRect(0, 0, W, H);
         ctx.restore();
     }
 
     // ---- Frame -------------------------------------------------------------
+    const fgTier = tiers.find(t => t.id === "fg");
     function render() {
         const time = performance.now() / 1000;
         const hour = currentHour();
         pal = samplePalette(hour);
         const body = skyBody(hour);
+        ensureTint(pal, hour);
 
         ctx.clearRect(0, 0, W, H);
-        drawSky(pal, body, time);
+        ctx.drawImage(skyCanvas, 0, 0);
         drawBody(pal, body);
-        drawStars(pal, hour, time);
+        drawStars(hour, time);
         drawClouds(pal, time);
 
-        if (!level) { drawGrain(); return; }
-
-        drawBergs();
-
-        ctx.save();
-        ctx.translate(-cameraX, 0);
-        drawWaterBase(pal);
-        drawEnemies();
-        if (state === "caught") drawPenguin(player);
-        drawWaterOverlay(pal, time);
-        drawSplashes(pal);
-
-        const sx = Math.max(0, Math.min(cameraX, level.width - W));
-        ctx.drawImage(terrainCanvas, sx, 0, W, H, sx, 0, W, H);
-
-        for (const c of level.coins) if (!c.collected) drawFish(c);
-        drawGoal(time);
-
-        if (state !== "caught") {
-            if (invincibleTimer <= 0 || Math.floor(invincibleTimer * 10) % 2 === 0) drawPenguin(player);
+        // Parallax depth: far mountains → fog → mid bergs → fog → near bergs
+        for (const tier of tiers) {
+            if (tier.id === "far") { drawTier(tier, time); drawFogBand(CFG.fogBands[0], pal, time); }
+            else if (tier.id === "mid") { drawTier(tier, time); drawFogBand(CFG.fogBands[1], pal, time); }
+            else if (tier.id === "near") { drawTier(tier, time); }
         }
-        ctx.restore();
+
+        if (level) {
+            ctx.save();
+            ctx.translate(-cameraX, 0);
+            drawWaterBase(pal);
+            drawEnemies();
+            if (state === "caught") drawPenguin(player, time, body, true);
+            drawWaterOverlay(pal, time);
+            drawSplashes(pal);
+
+            const sx = Math.max(0, Math.min(cameraX, level.width - W));
+            ctx.drawImage(terrainCanvas, sx, 0, W, H, sx, 0, W, H);
+
+            for (const c of level.coins) if (!c.collected) drawFish(c, time);
+            drawGoal(time);
+
+            if (state !== "caught") {
+                if (invincibleTimer <= 0 || Math.floor(invincibleTimer * 10) % 2 === 0) {
+                    drawPenguinShadow(player, body);
+                    drawPenguin(player, time, body, false);
+                }
+            }
+            ctx.restore();
+        }
+
+        if (fgTier) drawTier(fgTier, time);   // foreground detail plane
 
         drawSnow(pal, time);
         drawGrade(pal, body);
+        ctx.drawImage(vignetteCanvas, 0, 0);
         drawGrain();
     }
 

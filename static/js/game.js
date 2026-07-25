@@ -139,6 +139,10 @@
     let caughtBy = null;
     let deathTimer = 0;
     let splashes = [];
+    let sprays = [];   // snow spray kicked up while belly-sliding
+
+    const SLIDE_MULT = 2;              // twice the normal running speed
+    const SLIDE_MIN = MAX_SPEED * 0.55; // fast enough to be on the belly
 
     let level = null;
     let player = null;
@@ -235,11 +239,13 @@
             vx: 0, vy: 0,
             onGround: false,
             facing: 1,
+            sliding: false,
         };
         cameraX = 0;
         invincibleTimer = 1.2;
         caughtBy = null;
         splashes = [];
+        sprays = [];
         paintTerrain(idx);
     }
 
@@ -354,25 +360,48 @@
         for (const s of splashes) s.t += dt;
         splashes = splashes.filter(s => s.t < 0.7);
 
+        for (const s of sprays) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 400 * dt; }
+        sprays = sprays.filter(s => s.t < s.life);
+
         if (state === "caught") { updateCaught(dt); return; }
         if (state !== "playing") return;
 
         if (invincibleTimer > 0) invincibleTimer -= dt;
 
-        // Horizontal movement
+        // Horizontal movement — hold Shift to sprint at double speed and
+        // belly-slide across the ice.
         const left = keys["arrowleft"] || keys["a"];
         const right = keys["arrowright"] || keys["d"];
+        const sprint = !!keys["shift"];
+        const maxSpeed = sprint ? MAX_SPEED * SLIDE_MULT : MAX_SPEED;
+        const accel = sprint ? MOVE_ACCEL * 1.35 : MOVE_ACCEL;
         if (left && !right) {
-            player.vx -= MOVE_ACCEL * dt;
+            player.vx -= accel * dt;
             player.facing = -1;
         } else if (right && !left) {
-            player.vx += MOVE_ACCEL * dt;
+            player.vx += accel * dt;
             player.facing = 1;
         } else {
+            // Low friction while sprinting on the ground → the penguin glides.
+            const fr = (sprint && player.onGround) ? FRICTION * 0.25 : FRICTION;
             const sign = Math.sign(player.vx);
-            player.vx -= sign * Math.min(Math.abs(player.vx), FRICTION * dt);
+            player.vx -= sign * Math.min(Math.abs(player.vx), fr * dt);
         }
-        player.vx = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, player.vx));
+        player.vx = Math.max(-maxSpeed, Math.min(maxSpeed, player.vx));
+
+        player.sliding = sprint && player.onGround && Math.abs(player.vx) > SLIDE_MIN;
+        if (player.sliding) {
+            const backX = player.facing === 1 ? player.x + 4 : player.x + player.w - 4;
+            for (let i = 0; i < 2; i++) {
+                sprays.push({
+                    x: backX, y: player.y + player.h - 3,
+                    vx: -player.facing * (30 + Math.random() * 70),
+                    vy: -(20 + Math.random() * 70),
+                    t: 0, life: 0.35 + Math.random() * 0.25,
+                });
+            }
+            if (sprays.length > 80) sprays.splice(0, sprays.length - 80);
+        }
 
         // Jump
         if (keys["jump"] && player.onGround) {
@@ -1080,12 +1109,72 @@
         const dir = body.x < penguinScreenX(p) ? 1 : -1; // opposite the light
         const stretch = 1 + (1 - Math.max(0, body.alt)) * 0.9;
         const a = 0.22 * Math.max(0.12, body.alt);
-        ell(p.x + p.w / 2 + dir * 9, groundY + 3, p.w * 0.62 * stretch, 4.5, 0, rgb(pal.iceShadow), a);
-        ell(p.x + p.w / 2 + dir * 9, groundY + 3, p.w * 0.4 * stretch, 3, 0, rgb(pal.iceShadow), a * 0.7);
+        const bw = (p.sliding ? p.w * 0.95 : p.w * 0.62) * stretch;
+        ell(p.x + p.w / 2 + dir * 9, groundY + 3, bw, 4.5, 0, rgb(pal.iceShadow), a);
+        ell(p.x + p.w / 2 + dir * 9, groundY + 3, bw * 0.64, 3, 0, rgb(pal.iceShadow), a * 0.7);
+    }
+
+    function drawSprays() {
+        for (const s of sprays) {
+            const a = (1 - s.t / s.life) * 0.8;
+            ell(s.x, s.y, 2 + s.t * 6, 2 + s.t * 4, 0, rgb(pal.particle), a);
+        }
+    }
+
+    // Belly-slide (tobogganing) pose — horizontal body low on the ice.
+    function drawPenguinSlide(p, time, body) {
+        const f = p.facing;
+        const cx = p.x + p.w / 2;
+        const gy = p.y + p.h;
+        const midY = gy - 8 + Math.sin(time * 20) * 0.6; // slight bumpy jitter
+
+        // rimlight on the sun-facing side
+        if (body) {
+            const dir = body.x < penguinScreenX(p) ? -1 : 1;
+            ctx.save();
+            ctx.globalCompositeOperation = "lighter";
+            ctx.globalAlpha = 0.16 * Math.max(0.25, body.alt);
+            ctx.fillStyle = rgb(pal.light);
+            ctx.beginPath();
+            ctx.ellipse(cx + dir * 4, midY - 2, p.w * 0.8, p.h * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // trailing flipper + feet (behind)
+        ell(cx - f * p.w * 0.5, midY - 2, 8, 3.5, f * 0.3, "#131c26", 0.95);
+        ctx.fillStyle = "#cf8b45";
+        ctx.beginPath(); ctx.ellipse(cx - f * p.w * 0.52, gy - 2, 5.5, 2.6, f * 0.3, 0, Math.PI * 2); ctx.fill();
+
+        // body
+        ell(cx, midY, p.w * 0.82, p.h * 0.30, 0, "#1d2836");
+        ell(cx - f * 4, midY - 3, p.w * 0.66, p.h * 0.2, 0, "#3c516b", 0.4);
+        // belly resting on the ice
+        ell(cx + f * 5, midY + 4, p.w * 0.5, p.h * 0.16, 0, "#f3efe3", 0.95);
+
+        // head reaching forward
+        const hx = cx + f * p.w * 0.48;
+        ell(hx, midY - 6, 9.5, 8, 0, "#1d2836");
+        ell(hx + f * 3, midY - 8, 4.2, 6, f * 0.4, "#f0bd53", 0.85); // cheek patch
+        const blink = (time % 3.4) < 0.12;
+        if (blink) {
+            ctx.strokeStyle = "#0b1016"; ctx.lineWidth = 1.6;
+            ctx.beginPath(); ctx.moveTo(hx + f * 1, midY - 9); ctx.lineTo(hx + f * 5, midY - 9); ctx.stroke();
+        } else {
+            ell(hx + f * 3, midY - 9, 2, 2, 0, "#0b1016");
+        }
+        ctx.fillStyle = "#d98a3d";
+        ctx.beginPath();
+        ctx.moveTo(hx + f * 7, midY - 6);
+        ctx.lineTo(hx + f * 16, midY - 4.5);
+        ctx.lineTo(hx + f * 7, midY - 2.5);
+        ctx.closePath();
+        ctx.fill();
     }
 
     function drawPenguin(p, time, body, plain) {
         const f = p.facing;
+        if (p.sliding && !plain) { drawPenguinSlide(p, time, body); return; }
         const idle = !plain;
         let breathe = 0, wob = 0, blink = false;
         if (idle) {
@@ -1505,6 +1594,8 @@
 
             for (const c of level.coins) if (!c.collected) drawFish(c, time);
             drawGoal(time);
+
+            drawSprays();
 
             if (state !== "caught") {
                 if (invincibleTimer <= 0 || Math.floor(invincibleTimer * 10) % 2 === 0) {

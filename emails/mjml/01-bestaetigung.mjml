@@ -1,0 +1,31 @@
+<mjml lang="de">
+  <mj-head>
+    <mj-title>Bitte bestätigen Sie Ihre Anmeldung</mj-title>
+    <mj-preview>Ein Klick – dann erinnern wir Sie rechtzeitig an Ihre Heizungswartung.</mj-preview>
+    <mj-include path="./_partials/kopf.mjml" />
+  </mj-head>
+  <mj-body>
+    <mj-include path="./_partials/header.mjml" />
+    <mj-section>
+      <mj-column>
+        <mj-text mj-class="headline">Fast geschafft, {{vorname}}!</mj-text>
+        <mj-text>
+          Vielen Dank, dass Sie sich für unsere Wartungserinnerung eingetragen haben.
+          Damit wir sicher sind, dass diese E-Mail-Adresse wirklich Ihnen gehört,
+          bestätigen Sie bitte kurz mit einem Klick:
+        </mj-text>
+        <mj-button href="{{bestaetigungs_link}}">Anmeldung bestätigen</mj-button>
+        <mj-text mj-class="klein">
+          Der Link ist 7 Tage gültig. Erst nach Ihrer Bestätigung schicken wir Ihnen Erinnerungen.
+        </mj-text>
+        <mj-text mj-class="box">
+          <strong>Sie haben sich gar nicht angemeldet?</strong><br />
+          Dann ignorieren Sie diese E-Mail einfach. Ohne Bestätigung werden Sie nicht eingetragen
+          und hören nichts mehr von uns.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="./_partials/signatur.mjml" />
+    <mj-include path="./_partials/footer.mjml" />
+  </mj-body>
+</mjml>

@@ -1,0 +1,37 @@
+<mjml lang="de">
+  <mj-head>
+    <mj-title>Willkommen – ab jetzt denken wir an Ihre Wartung</mj-title>
+    <mj-preview>Was Sie von uns bekommen: rechtzeitige Erinnerungen, ab und zu ein Tipp – sonst nichts.</mj-preview>
+    <mj-include path="./_partials/kopf.mjml" />
+  </mj-head>
+  <mj-body>
+    <mj-include path="./_partials/header.mjml" />
+    <mj-section>
+      <mj-column>
+        <mj-text mj-class="headline">Schön, dass Sie dabei sind!</mj-text>
+        <mj-text>
+          Hallo {{vorname}},<br /><br />
+          Ihre Anmeldung hat geklappt. Ab sofort behalten wir den Wartungstermin
+          für Ihre {{heizungsart}} im Blick – Sie müssen nicht mehr selbst daran denken.
+        </mj-text>
+        <mj-text css-class="liste">
+          <strong>Das bekommen Sie von uns:</strong>
+          <ul style="padding-left:20px;margin:8px 0 0;">
+            <li>eine Erinnerung <strong>4 Wochen</strong>, bevor Ihre Wartung fällig ist,</li>
+            <li>eine kurze letzte Erinnerung eine Woche vorher – nur, falls noch kein Termin steht,</li>
+            <li>ab und zu einen nützlichen Tipp, zum Beispiel vor dem Winter.</li>
+          </ul>
+        </mj-text>
+        <mj-text>Mehr nicht. Versprochen – keine Werbeflut.</mj-text>
+        <mj-text mj-class="box">
+          <strong>Wann war Ihre letzte Wartung?</strong><br />
+          Falls Sie das Datum bei der Anmeldung nicht wussten: Antworten Sie einfach auf diese
+          E-Mail, sobald Sie es gefunden haben (steht meist auf dem letzten Wartungsprotokoll).
+        </mj-text>
+        <mj-button href="[[termin_link]]">Wartungstermin vereinbaren</mj-button>
+      </mj-column>
+    </mj-section>
+    <mj-include path="./_partials/signatur.mjml" />
+    <mj-include path="./_partials/footer.mjml" />
+  </mj-body>
+</mjml>

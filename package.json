@@ -1,0 +1,18 @@
+{
+  "name": "email-marketing-demo-shk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Demo: E-Mail-Marketing für Handwerksbetriebe am Beispiel der fiktiven Heizungsbau Mustermann GmbH",
+  "scripts": {
+    "build:emails": "node emails/build.js",
+    "plan": "node automation/plan.js",
+    "preview": "node automation/preview-server.js",
+    "test": "node automation/test-pages.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "mjml": "^4.18.0"
+  }
+}

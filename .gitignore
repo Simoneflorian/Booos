@@ -7,3 +7,7 @@ __pycache__/
 venv/
 *.xlsx
 uploads/
+
+# E-Mail-Marketing-Demo
+node_modules/
+automation/ausgabe/

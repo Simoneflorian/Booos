@@ -1,0 +1,21 @@
+{
+  "_hinweis": "Reihenfolge und Auslöser der Mail-Strecke. Betreff und Preheader stehen direkt in den MJML-Dateien (<mj-title> und <mj-preview>).",
+  "platzhalter": {
+    "vorname": "Vorname des Empfängers",
+    "nachname": "Nachname des Empfängers",
+    "heizungsart": "Art der Heizung, z. B. „Gasheizung“, „Wärmepumpe“",
+    "letzte_wartung": "Datum der letzten Wartung (TT.MM.JJJJ)",
+    "faellig_am": "Datum der nächsten fälligen Wartung (TT.MM.JJJJ)",
+    "bestaetigungs_link": "Persönlicher Double-Opt-in-Link (nur Mail 1)",
+    "abmelde_link": "Persönlicher Abmeldelink (alle Mails)"
+  },
+  "mails": [
+    { "nr": 1, "datei": "01-bestaetigung", "name": "Bestätigung (Double-Opt-in)", "ausloeser": "Sofort nach dem Absenden des Anmeldeformulars", "kurz": "Tag 0" },
+    { "nr": 2, "datei": "02-willkommen", "name": "Willkommen", "ausloeser": "Sofort nach Klick auf den Bestätigungslink", "kurz": "Tag 0" },
+    { "nr": 3, "datei": "03-erinnerung-4-wochen", "name": "Wartungserinnerung", "ausloeser": "4 Wochen vor Fälligkeit (letzte Wartung + 12 Monate)", "kurz": "Fälligkeit − 28 Tage" },
+    { "nr": 4, "datei": "04-letzte-erinnerung", "name": "Letzte Erinnerung", "ausloeser": "1 Woche vor Fälligkeit – nur, wenn noch kein Termin vereinbart ist", "kurz": "Fälligkeit − 7 Tage" },
+    { "nr": 5, "datei": "05-bewertung", "name": "Bewertungsanfrage", "ausloeser": "2 Tage nach erledigtem Wartungstermin", "kurz": "Termin + 2 Tage" },
+    { "nr": 6, "datei": "06-herbst", "name": "Saisonmail Herbst", "ausloeser": "Einmal im Jahr am 15. September an alle bestätigten Kontakte", "kurz": "15. September" },
+    { "nr": 7, "datei": "07-reaktivierung", "name": "Reaktivierung", "ausloeser": "Letzte Wartung über 18 Monate her und kein Termin vereinbart", "kurz": "Wartung + 18 Monate" }
+  ]
+}

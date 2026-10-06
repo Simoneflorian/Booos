@@ -1,0 +1,12 @@
+<mj-section padding="8px 28px 32px">
+  <mj-column>
+    <mj-text>
+      Viele Grüße aus Musterstadt<br />
+      <strong>[[inhaber]]</strong> und das Team von [[firma]]
+    </mj-text>
+    <mj-text mj-class="klein">
+      Fragen? Rufen Sie uns an: <a href="tel:[[telefon_link]]"><strong>[[telefon]]</strong></a> (Mo–Fr 7–17 Uhr)<br />
+      oder antworten Sie einfach auf diese E-Mail.
+    </mj-text>
+  </mj-column>
+</mj-section>

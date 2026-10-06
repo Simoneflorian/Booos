@@ -1,0 +1,10 @@
+<mj-section padding="24px 28px 18px" border-top="6px solid [[farbe_primaer]]">
+  <mj-column>
+    <mj-image src="[[asset_pfad]][[logo_datei]]" alt="[[firma]]" width="200px" align="left" href="https://[[website]]" />
+  </mj-column>
+</mj-section>
+<mj-section padding="0 28px">
+  <mj-column>
+    <mj-divider border-color="[[farbe_akzent]]" border-width="3px" padding="0" />
+  </mj-column>
+</mj-section>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Anmeldung erfolgreich – Heizungsbau Mustermann (Demo)</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="demo-leiste" role="note">Demo – fiktiver Betrieb. Es werden keine Daten übertragen oder E-Mails verschickt.</div>
+
+  <header class="kopf">
+    <div class="container">
+      <a class="logo" href="index.html"><img src="assets/logo.svg" alt="Heizungsbau Mustermann GmbH – Startseite" width="268" height="64"></a>
+      <a class="tel" href="tel:+49123456789"><span>Fragen? </span>0123 456789</a>
+    </div>
+  </header>
+
+  <main class="anmeldung">
+    <div class="container">
+      <div class="karte">
+        <svg class="status-icon" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28" fill="#1F3A5F"/><path d="M19 33l9 9 17-19" fill="none" stroke="#E87722" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h1 id="titel">Anmeldung erfolgreich!</h1>
+        <p id="einleitung">Vielen Dank – Ihre E-Mail-Adresse ist bestätigt. Ab jetzt behalten wir Ihre Heizungswartung im Blick.</p>
+
+        <div class="hinweis-box" id="termin-info" hidden>
+          Ihre nächste Wartung ist voraussichtlich am <strong id="faellig"></strong> fällig.
+          Wir erinnern Sie am <strong id="erinnerung"></strong> per E-Mail.
+        </div>
+
+        <h2>Wie geht es weiter?</h2>
+        <ol class="schritte">
+          <li>Gleich bekommen Sie eine kurze Willkommens-E-Mail.</li>
+          <li>Vier Wochen vor der fälligen Wartung erinnern wir Sie – mit Link zur Terminvereinbarung.</li>
+          <li id="kein-datum" hidden>Sie kennen das Datum der letzten Wartung nicht? Kein Problem – antworten Sie einfach auf die Willkommens-E-Mail, sobald Sie es gefunden haben.</li>
+        </ol>
+        <p>Sie möchten doch keine Erinnerungen mehr? Dann klicken Sie einfach in jeder E-Mail auf „Abmelden“.</p>
+
+        <p><a class="button button-sekundaer" href="index.html">Zurück zur Startseite</a></p>
+
+        <div class="demo-box">
+          <h3>Nur in der Demo</h3>
+          <p>Im echten Betrieb würde jetzt automatisch die Willkommensmail verschickt und der Kontakt im Versandsystem als „bestätigt“ markiert (mit Zeitstempel als Nachweis der Einwilligung).</p>
+          <div class="aktionen">
+            <a class="button" href="../emails/html/beispiel/02-willkommen.html" target="_blank" rel="noopener">Willkommensmail ansehen</a>
+            <a class="button button-sekundaer" href="../index.html">Zur Demo-Übersicht</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="fuss">
+    <div class="container">
+      <div>© Heizungsbau Mustermann GmbH · Musterweg 12 · 12345 Musterstadt <br>Fiktiver Demo-Betrieb</div>
+      <nav aria-label="Rechtliches">
+        <a href="impressum.html">Impressum</a>
+        <a href="datenschutz.html">Datenschutz</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var p = new URLSearchParams(location.search);
+      var vorname = (p.get('vorname') || '').trim().slice(0, 60);
+      if (vorname) {
+        document.getElementById('titel').textContent = 'Anmeldung erfolgreich, ' + vorname + '!';
+      }
+
+      // Nächste Fälligkeit = letzte Wartung + 12 Monate; liegt sie schon in der Vergangenheit: so bald wie möglich.
+      var wartung = p.get('wartung');
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(wartung || '');
+      if (!m) {
+        document.getElementById('kein-datum').hidden = false;
+        return;
+      }
+      var faellig = new Date(+m[1] + 1, +m[2] - 1, +m[3]);
+      var heute = new Date();
+      heute.setHours(0, 0, 0, 0);
+      var erinnerung = new Date(faellig.getTime() - 28 * 86400000);
+      var fmt = function (d) { return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
+
+      var box = document.getElementById('termin-info');
+      if (faellig < heute) {
+        box.innerHTML = '';
+        box.appendChild(document.createTextNode('Laut Ihrer Angabe war die letzte Wartung vor über einem Jahr – die nächste ist also schon fällig. '));
+        var s = document.createElement('strong');
+        s.textContent = 'Am besten gleich einen Termin vereinbaren: 0123 456789.';
+        box.appendChild(s);
+      } else {
+        document.getElementById('faellig').textContent = fmt(faellig);
+        document.getElementById('erinnerung').textContent = fmt(erinnerung < heute ? heute : erinnerung);
+      }
+      box.hidden = false;
+    })();
+  </script>
+</body>
+</html>

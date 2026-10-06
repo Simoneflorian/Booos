@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wartungserinnerung – Heizungsbau Mustermann (Demo)</title>
+  <meta name="description" content="Kostenlose E-Mail-Erinnerung an die jährliche Heizungswartung – Heizungsbau Mustermann GmbH, Musterstadt (fiktiver Demo-Betrieb).">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#anmeldung">Zum Anmeldeformular springen</a>
+  <div class="demo-leiste" role="note">Demo – fiktiver Betrieb. Es werden keine Daten übertragen oder E-Mails verschickt.</div>
+
+  <header class="kopf">
+    <div class="container">
+      <a class="logo" href="index.html"><img src="assets/logo.svg" alt="Heizungsbau Mustermann GmbH – Startseite" width="268" height="64"></a>
+      <a class="tel" href="tel:+49123456789"><span>Fragen? </span>0123 456789</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <h1>Nie wieder Wartung vergessen –<br>wir erinnern Sie rechtzeitig.</h1>
+        <p>Tragen Sie sich in einer Minute ein. Wir melden uns per E-Mail, wenn die jährliche Wartung Ihrer Heizung ansteht – kostenlos und jederzeit abbestellbar.</p>
+        <a class="button" href="#anmeldung">Kostenlos anmelden</a>
+      </div>
+    </section>
+
+    <section class="vorteile" aria-labelledby="vorteile-titel">
+      <div class="container">
+        <h2 id="vorteile-titel" class="visually-hidden">Ihre Vorteile</h2>
+        <ul>
+          <li class="vorteil">
+            <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="22" r="14" fill="none" stroke="#1F3A5F" stroke-width="3"/><path d="M20 13v9l6 4" fill="none" stroke="#E87722" stroke-width="3" stroke-linecap="round"/><path d="M8 7l5 4M32 7l-5 4" stroke="#1F3A5F" stroke-width="3" stroke-linecap="round"/></svg>
+            <h3>Rechtzeitig erinnert</h3>
+            <p>Vier Wochen vor der fälligen Wartung bekommen Sie eine E-Mail. So bleibt genug Zeit für einen Termin, der Ihnen passt.</p>
+          </li>
+          <li class="vorteil">
+            <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4c3 6 10 10 10 19a10 10 0 0 1-20 0c0-5 3-8 5-10 0 4 1.5 6 3.5 6.5C17.5 13.5 18.8 8.5 20 4z" fill="#E87722"/><path d="M20 26c2 2 4 3.8 4 6.6A4 4 0 0 1 20 36.5a4 4 0 0 1-4-3.9c0-2.6 2-4.2 4-6.6z" fill="#FFE3C7"/></svg>
+            <h3>Geld und Ärger sparen</h3>
+            <p>Eine gewartete Heizung verbraucht weniger, fällt seltener aus – und die Herstellergarantie bleibt erhalten.</p>
+          </li>
+          <li class="vorteil">
+            <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="9" width="30" height="22" rx="3" fill="none" stroke="#1F3A5F" stroke-width="3"/><path d="M6 11l14 11 14-11" fill="none" stroke="#1F3A5F" stroke-width="3" stroke-linejoin="round"/><circle cx="31" cy="29" r="7" fill="#E87722"/><path d="M28 29l2.2 2.2L34 27" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>Kein Werbe-Spam</h3>
+            <p>Nur Erinnerungen und ab und zu ein Tipp, zum Beispiel vor dem Winter. Abmelden geht jederzeit mit einem Klick.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="anmeldung" id="anmeldung" aria-labelledby="formular-titel">
+      <div class="container">
+        <div class="karte" id="formular-karte">
+          <h2 id="formular-titel">Jetzt zur Wartungserinnerung anmelden</h2>
+          <p>Kostenlos und unverbindlich. Sie erhalten danach eine E-Mail mit einem Bestätigungslink.</p>
+
+          <form id="anmeldeformular" novalidate>
+            <div class="feldgruppe zweispaltig">
+              <div class="feld">
+                <label for="vorname">Vorname *</label>
+                <input id="vorname" name="vorname" type="text" autocomplete="given-name" required maxlength="60" aria-describedby="vorname-fehler">
+                <p class="fehlertext" id="vorname-fehler">Bitte geben Sie Ihren Vornamen ein.</p>
+              </div>
+              <div class="feld">
+                <label for="nachname">Nachname *</label>
+                <input id="nachname" name="nachname" type="text" autocomplete="family-name" required maxlength="60" aria-describedby="nachname-fehler">
+                <p class="fehlertext" id="nachname-fehler">Bitte geben Sie Ihren Nachnamen ein.</p>
+              </div>
+            </div>
+
+            <div class="feldgruppe" style="margin-top:16px">
+              <div class="feld">
+                <label for="email">E-Mail-Adresse *</label>
+                <input id="email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength="120" aria-describedby="email-fehler">
+                <p class="fehlertext" id="email-fehler">Bitte geben Sie eine gültige E-Mail-Adresse ein (z. B. name@beispiel.de).</p>
+              </div>
+
+              <div class="feld">
+                <label for="heizungsart">Art der Heizung *</label>
+                <select id="heizungsart" name="heizungsart" required aria-describedby="heizungsart-fehler">
+                  <option value="">Bitte auswählen …</option>
+                  <option value="gas">Gasheizung</option>
+                  <option value="oel">Ölheizung</option>
+                  <option value="waermepumpe">Wärmepumpe</option>
+                  <option value="sonstige">Sonstige / weiß nicht</option>
+                </select>
+                <p class="fehlertext" id="heizungsart-fehler">Bitte wählen Sie Ihre Heizungsart aus.</p>
+              </div>
+
+              <div class="feld">
+                <label for="letzte_wartung">Datum der letzten Wartung <span class="optional">(optional)</span></label>
+                <input id="letzte_wartung" name="letzte_wartung" type="date" aria-describedby="wartung-hilfe wartung-fehler">
+                <p class="hilfe" id="wartung-hilfe">Steht meist auf dem letzten Wartungsprotokoll. Ungefähr reicht.</p>
+                <p class="fehlertext" id="wartung-fehler">Das Datum darf nicht in der Zukunft liegen.</p>
+              </div>
+            </div>
+
+            <div class="einwilligung" id="einwilligung-box">
+              <label for="einwilligung">
+                <input id="einwilligung" name="einwilligung" type="checkbox" required aria-describedby="einwilligung-fehler">
+                <span>
+                  Ja, ich möchte von der Heizungsbau Mustermann GmbH per E-Mail an die fällige Wartung meiner Heizung
+                  erinnert werden und gelegentlich saisonale Tipps und Angebote rund um Heizung und Sanitär erhalten. *
+                  Dafür werden meine Angaben (Name, E-Mail-Adresse, Heizungsart und – falls angegeben – Datum der letzten Wartung)
+                  ausschließlich zu diesem Zweck gespeichert und verarbeitet.
+                  <strong>Ich kann meine Einwilligung jederzeit ohne Angabe von Gründen widerrufen</strong> – über den
+                  Abmeldelink in jeder E-Mail oder per Nachricht an info@mustermann-demo.de.
+                  Weitere Informationen in der <a href="datenschutz.html">Datenschutzerklärung</a>.
+                </span>
+              </label>
+              <p class="fehlertext" id="einwilligung-fehler">Bitte bestätigen Sie die Einwilligung, damit wir Ihnen Erinnerungen schicken dürfen.</p>
+            </div>
+
+            <button class="button" type="submit">Kostenlos anmelden</button>
+            <p class="formular-fuss">* Pflichtfeld. Nach dem Absenden erhalten Sie eine E-Mail zur Bestätigung (Double-Opt-in). Erst danach sind Sie angemeldet.</p>
+          </form>
+        </div>
+
+        <div class="karte" id="bitte-bestaetigen" hidden tabindex="-1">
+          <svg class="status-icon" viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="14" width="52" height="36" rx="5" fill="#FFF4EA" stroke="#1F3A5F" stroke-width="3"/><path d="M8 17l24 18 24-18" fill="none" stroke="#1F3A5F" stroke-width="3" stroke-linejoin="round"/><circle cx="50" cy="46" r="11" fill="#E87722"/><path d="M50 40v7M50 51v.5" stroke="#14243A" stroke-width="3" stroke-linecap="round"/></svg>
+          <h2>Bitte bestätigen Sie Ihre E-Mail-Adresse</h2>
+          <p>Fast geschafft, <strong data-feld="vorname"></strong>! Wir haben Ihnen eine E-Mail an <strong data-feld="email"></strong> geschickt.</p>
+          <ol class="schritte">
+            <li>Öffnen Sie Ihr Postfach.</li>
+            <li>Klicken Sie in der E-Mail von Heizungsbau Mustermann auf <strong>„Anmeldung bestätigen“</strong>.</li>
+            <li>Fertig – ab dann erinnern wir Sie rechtzeitig.</li>
+          </ol>
+          <p class="pflicht-hinweis">Keine E-Mail da? Schauen Sie bitte auch im Spam-Ordner nach. Die Mail kann ein paar Minuten brauchen.</p>
+
+          <div class="demo-box">
+            <h3>Nur in der Demo</h3>
+            <p>Hier wird keine echte E-Mail verschickt. Klicken Sie auf den Button, um den Klick auf den Bestätigungslink zu simulieren.</p>
+            <div class="aktionen">
+              <a class="button" id="bestaetigen-link" href="bestaetigt.html">Bestätigungslink öffnen (Demo)</a>
+              <a class="button button-sekundaer" href="../emails/html/beispiel/01-bestaetigung.html" target="_blank" rel="noopener">Bestätigungsmail ansehen</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="fuss">
+    <div class="container">
+      <div>© Heizungsbau Mustermann GmbH · Musterweg 12 · 12345 Musterstadt <br>Fiktiver Demo-Betrieb</div>
+      <nav aria-label="Rechtliches">
+        <a href="impressum.html">Impressum</a>
+        <a href="datenschutz.html">Datenschutz</a>
+        <a href="aushang.html">Aushang (A5)</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

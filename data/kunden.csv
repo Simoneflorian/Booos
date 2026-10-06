@@ -1,0 +1,16 @@
+kunden_nr,vorname,nachname,email,heizungsart,angemeldet_am,bestaetigt_am,letzte_wartung,naechster_termin,abgemeldet_am
+K001,Anna,Beispiel,anna.beispiel@example.com,gas,2025-11-01,2025-11-01,2025-11-03,,
+K002,Bernd,Probe,bernd.probe@example.com,oel,2025-06-12,2025-06-12,2025-10-20,,
+K003,Carla,Muster,carla.muster@example.com,waermepumpe,2025-12-16,2025-12-17,2025-12-15,,
+K004,Dieter,Fiktiv,dieter.fiktiv@example.com,gas,2025-03-02,2025-03-02,2026-10-04,,
+K005,Elke,Platzhalter,elke.platzhalter@example.com,gas,2024-11-20,2024-11-21,2025-03-10,,
+K006,Frank,Demo,frank.demo@example.com,oel,2024-09-30,2024-09-30,2025-01-20,2026-10-15,
+K007,Gabi,Test,gabi.test@example.com,waermepumpe,2026-10-05,,,,
+K008,Hans,Vorlage,hans.vorlage@example.com,sonstige,2026-10-06,2026-10-06,,,
+K009,Ines,Schablone,ines.schablone@example.com,gas,2026-01-30,2026-01-30,2026-01-28,,
+K010,Jürgen,Entwurf,juergen.entwurf@example.com,oel,2025-11-12,2025-11-12,2025-11-10,,
+K011,Karin,Exempel,karin.exempel@example.com,gas,2024-12-03,2024-12-03,2024-12-01,,2026-05-01
+K012,Lukas,Modell,lukas.modell@example.com,waermepumpe,2026-02-16,2026-02-16,2026-02-14,,
+K013,Monika,Musterfrau,monika.musterfrau@example.com,gas,2025-10-27,2025-10-27,2025-10-25,2026-10-22,
+K014,Norbert,Attrappe,norbert.attrappe@example.com,oel,2025-04-04,2025-04-05,2025-04-02,,
+K015,Olga,Prototyp,olga.prototyp@example.com,sonstige,2026-09-28,2026-09-29,2024-08-19,,

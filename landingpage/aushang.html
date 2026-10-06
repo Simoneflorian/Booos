@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aushang A5 – Wartungserinnerung (Demo)</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <style>
+    :root { --blau: #1F3A5F; --orange: #E87722; --orange-hell: #FFF4EA; --text: #2B2B2B; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #DDE3EA; color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+
+    /* Werkzeugleiste (wird nicht gedruckt) */
+    .werkzeug { background: #fff; border-bottom: 2px solid var(--orange); padding: 12px 16px; }
+    .werkzeug .innen { max-width: 760px; margin: 0 auto; display: grid; gap: 8px; }
+    .werkzeug p { margin: 0; font-size: .9rem; }
+    .werkzeug label { font-weight: 600; font-size: .9rem; }
+    .werkzeug .zeile { display: flex; gap: 8px; flex-wrap: wrap; }
+    .werkzeug input { flex: 1 1 260px; min-width: 0; font: inherit; padding: 10px; border: 1.5px solid #8A97A8; border-radius: 6px; }
+    .werkzeug button { font: inherit; font-weight: 700; padding: 10px 18px; border-radius: 6px; border: 0; cursor: pointer; background: var(--orange); color: #14243A; }
+    .werkzeug button.sek { background: #fff; color: var(--blau); border: 2px solid var(--blau); }
+    .werkzeug a { color: var(--blau); }
+    .warnung { color: #8A3A00; }
+
+    /* A5-Blatt: 148 × 210 mm */
+    .blatt-huelle { padding: 24px 16px; overflow-x: auto; }
+    .blatt {
+      width: 148mm; height: 210mm; margin: 0 auto; background: #fff;
+      box-shadow: 0 4px 24px rgba(0,0,0,.18);
+      display: flex; flex-direction: column; overflow: hidden; position: relative;
+    }
+    .blatt .oben { padding: 10mm 10mm 0; }
+    .blatt .oben img { width: 62mm; display: block; }
+    .blatt .streifen { height: 2.2mm; background: var(--orange); margin: 6mm 10mm 0; }
+    .blatt .inhalt { padding: 7mm 10mm 0; flex: 1; display: flex; flex-direction: column; }
+    .blatt h1 { color: var(--blau); font-size: 25pt; line-height: 1.1; margin: 0 0 3mm; }
+    .blatt .unterzeile { font-size: 12.5pt; line-height: 1.4; margin: 0 0 5mm; }
+    .blatt .qr-bereich { display: flex; gap: 6mm; align-items: center; background: var(--orange-hell); border-radius: 4mm; padding: 5mm; }
+    .blatt #qrcode { width: 46mm; height: 46mm; flex: 0 0 auto; background: #fff; padding: 2mm; border-radius: 2mm; }
+    .blatt #qrcode img, .blatt #qrcode canvas { width: 100% !important; height: 100% !important; display: block; }
+    .blatt .qr-text strong { display: block; color: var(--blau); font-size: 15pt; line-height: 1.2; margin-bottom: 2mm; }
+    .blatt .qr-text span { font-size: 10.5pt; line-height: 1.35; }
+    .blatt ul { list-style: none; padding: 0; margin: 6mm 0 0; font-size: 11.5pt; line-height: 1.45; }
+    .blatt li { padding-left: 7mm; position: relative; margin-bottom: 1.8mm; }
+    .blatt li::before { content: ""; position: absolute; left: 0; top: 1.6mm; width: 3.4mm; height: 3.4mm; border-radius: 50%; background: var(--orange); }
+    .blatt .unten { background: var(--blau); color: #fff; padding: 5mm 10mm; font-size: 10pt; line-height: 1.45; }
+    .blatt .unten strong { font-size: 12.5pt; }
+    .blatt .demo-stempel { position: absolute; top: 11mm; right: 8mm; border: .6mm solid #B42318; color: #B42318; font-weight: 700; font-size: 8pt; padding: 1mm 2mm; transform: rotate(6deg); letter-spacing: .3mm; }
+    .qr-fehler { font-size: 9pt; color: #B42318; text-align: center; padding-top: 14mm; }
+
+    @page { size: A5 portrait; margin: 0; }
+    @media print {
+      body { background: #fff; }
+      .werkzeug { display: none; }
+      .blatt-huelle { padding: 0; }
+      .blatt { box-shadow: none; margin: 0; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="werkzeug">
+    <div class="innen">
+      <p><strong>Demo – fiktiver Betrieb.</strong> Druckvorlage im Format A5 (z. B. für Ladentheke, Firmenwagen, Rechnungsbeilage). Beim Drucken „Seitenränder: keine“ und „Hintergrundgrafiken“ aktivieren.</p>
+      <label for="qr-url">Ziel-Adresse des QR-Codes</label>
+      <div class="zeile">
+        <input id="qr-url" type="url" spellcheck="false">
+        <button type="button" id="qr-aktualisieren" class="sek">QR-Code aktualisieren</button>
+        <button type="button" id="drucken">Drucken</button>
+      </div>
+      <p id="qr-hinweis" class="warnung" hidden>Hinweis: Diese Adresse ist nur auf diesem Rechner erreichbar. Für den echten Aushang die öffentliche Adresse der Anmeldeseite eintragen.</p>
+      <p><a href="index.html">← Zur Anmeldeseite</a></p>
+    </div>
+  </div>
+
+  <div class="blatt-huelle">
+    <article class="blatt" aria-label="Aushang A5">
+      <div class="demo-stempel" aria-hidden="true">DEMO</div>
+      <div class="oben"><img src="assets/logo.svg" alt="Heizungsbau Mustermann GmbH"></div>
+      <div class="streifen"></div>
+      <div class="inhalt">
+        <h1>Nie wieder Heizungs&shy;wartung vergessen!</h1>
+        <p class="unterzeile">Wir erinnern Sie kostenlos per E-Mail – rechtzeitig, bevor die jährliche Wartung fällig ist.</p>
+
+        <div class="qr-bereich">
+          <div id="qrcode" role="img" aria-label="QR-Code zur Anmeldeseite"></div>
+          <div class="qr-text">
+            <strong>Code scannen und in 1 Minute anmelden</strong>
+            <span>Handykamera auf den Code richten und dem Link folgen.</span>
+          </div>
+        </div>
+
+        <ul>
+          <li>Erinnerung 4 Wochen vor dem Termin</li>
+          <li>Weniger Verbrauch, weniger Ausfälle</li>
+          <li>Kein Spam – jederzeit abmeldbar</li>
+        </ul>
+      </div>
+      <div class="unten">
+        <strong>Heizungsbau Mustermann GmbH</strong><br>
+        Sanitär · Heizung · Klima · Musterweg 12 · 12345 Musterstadt<br>
+        Tel. 0123 456789 · info@mustermann-demo.de
+      </div>
+    </article>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+          integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    (function () {
+      var feld = document.getElementById('qr-url');
+      var ziel = document.getElementById('qrcode');
+      var hinweis = document.getElementById('qr-hinweis');
+
+      // Standard: ?url=… aus der Adresszeile, sonst die Anmeldeseite neben diesem Aushang.
+      var param = new URLSearchParams(location.search).get('url');
+      feld.value = param || new URL('index.html', location.href).href;
+
+      var qr = null;
+      function zeichne() {
+        var url = feld.value.trim();
+        hinweis.hidden = /^https?:\/\/(?!localhost|127\.|0\.0\.0\.0)/i.test(url);
+        if (typeof QRCode === 'undefined') {
+          ziel.innerHTML = '<p class="qr-fehler">QR-Bibliothek nicht geladen – bitte Internetverbindung prüfen.</p>';
+          return;
+        }
+        if (!qr) {
+          qr = new QRCode(ziel, { text: url, width: 512, height: 512, colorDark: '#1F3A5F', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+        } else {
+          qr.clear();
+          qr.makeCode(url);
+        }
+        ziel.setAttribute('aria-label', 'QR-Code zur Anmeldeseite: ' + url);
+        ziel.removeAttribute('title');
+      }
+
+      document.getElementById('qr-aktualisieren').addEventListener('click', zeichne);
+      feld.addEventListener('keydown', function (e) { if (e.key === 'Enter') zeichne(); });
+      document.getElementById('drucken').addEventListener('click', function () { window.print(); });
+      zeichne();
+    })();
+  </script>
+</body>
+</html>

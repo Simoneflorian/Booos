@@ -1,0 +1,37 @@
+<mjml lang="de">
+  <mj-head>
+    <mj-title>{{vorname}}, Ihre Heizungswartung ist in 4 Wochen fällig</mj-title>
+    <mj-preview>Jetzt in Ruhe einen Termin aussuchen – bevor es im Kalender eng wird.</mj-preview>
+    <mj-include path="./_partials/kopf.mjml" />
+  </mj-head>
+  <mj-body>
+    <mj-include path="./_partials/header.mjml" />
+    <mj-section>
+      <mj-column>
+        <mj-text mj-class="headline">Ihre Heizungswartung ist in 4 Wochen fällig</mj-text>
+        <mj-text>
+          Hallo {{vorname}},<br /><br />
+          die letzte Wartung Ihrer {{heizungsart}} ist bald ein Jahr her.
+          Höchste Zeit, einen Termin auszumachen:
+        </mj-text>
+        <mj-text mj-class="box" font-size="18px">
+          Fällig am: <strong>{{faellig_am}}</strong>
+        </mj-text>
+        <mj-button href="[[termin_link]]">Termin vereinbaren</mj-button>
+        <mj-text css-class="liste">
+          <strong>Warum sich die jährliche Wartung lohnt:</strong>
+          <ul style="padding-left:20px;margin:8px 0 0;">
+            <li><strong>Weniger Verbrauch:</strong> Eine saubere, gut eingestellte Anlage spart bares Geld.</li>
+            <li><strong>Weniger Ausfälle:</strong> Verschleißteile tauschen wir, bevor sie im Januar kaputtgehen.</li>
+            <li><strong>Garantie bleibt erhalten:</strong> Viele Hersteller verlangen die jährliche Wartung.</li>
+          </ul>
+        </mj-text>
+        <mj-text mj-class="klein">
+          Lieber telefonieren? Unter [[telefon]] finden wir gemeinsam einen Termin, der Ihnen passt.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="./_partials/signatur.mjml" />
+    <mj-include path="./_partials/footer.mjml" />
+  </mj-body>
+</mjml>

@@ -1,0 +1,38 @@
+<mjml lang="de">
+  <mj-head>
+    <mj-title>Heizung fit für den Winter – 4 Tipps vom Fachmann</mj-title>
+    <mj-preview>Plus: Bis 30. November Wartung buchen und den Effizienz-Check gratis dazu bekommen.</mj-preview>
+    <mj-include path="./_partials/kopf.mjml" />
+  </mj-head>
+  <mj-body>
+    <mj-include path="./_partials/header.mjml" />
+    <mj-section>
+      <mj-column>
+        <mj-text mj-class="headline">Heizung fit für den Winter</mj-text>
+        <mj-text>
+          Hallo {{vorname}},<br /><br />
+          die ersten kalten Nächte sind da. Damit Ihre {{heizungsart}} gut durch den Winter kommt,
+          hier vier Dinge, die Sie in fünf Minuten selbst prüfen können:
+        </mj-text>
+        <mj-text css-class="liste">
+          <ol style="padding-left:20px;margin:0;">
+            <li><strong>Heizkörper entlüften.</strong> Gluckert es, oder wird der Heizkörper oben nicht richtig warm? Dann ist Luft drin. Den Entlüftungsschlüssel gibt es im Baumarkt – oder bei uns.</li>
+            <li><strong>Wasserdruck prüfen.</strong> Ein Blick aufs Manometer: Bei kalter Anlage steht der Zeiger meist zwischen 1 und 2 bar. Den genauen Wert finden Sie in Ihrer Anlagen-Doku.</li>
+            <li><strong>Heizkörper frei lassen.</strong> Sofa, Schrank oder lange Vorhänge davor schlucken Wärme, die Sie bezahlen.</li>
+            <li><strong>Thermostate nicht ganz zudrehen.</strong> Auch in selten genutzten Räumen auf Stufe 1 bis 2 lassen. Das beugt Feuchtigkeit und Schimmel vor.</li>
+          </ol>
+        </mj-text>
+        <mj-text mj-class="box">
+          <strong>Unser Herbst-Angebot:</strong><br />
+          [[angebot_herbst]].
+        </mj-text>
+        <mj-button href="[[termin_link]]">Wartungstermin sichern</mj-button>
+        <mj-text mj-class="klein">
+          Tipp: Je früher im Herbst, desto freier ist unser Kalender. Ab Dezember wird es erfahrungsgemäß eng.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="./_partials/signatur.mjml" />
+    <mj-include path="./_partials/footer.mjml" />
+  </mj-body>
+</mjml>

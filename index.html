@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>E-Mail-Marketing für Handwerksbetriebe – Demo</title>
+  <meta name="description" content="Demo: Wartungserinnerungen per E-Mail für Handwerksbetriebe am Beispiel der fiktiven Heizungsbau Mustermann GmbH.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="landingpage/assets/favicon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      --blau: #1F3A5F; --blau-dunkel: #142840; --orange: #E87722; --orange-text: #B85A0F;
+      --button-text: #14243A; --hell: #F4F6F9; --orange-hell: #FFF4EA; --text: #2B2B2B;
+      --leise: #555F6D; --rand: #D5DCE5; --radius: 12px; --schatten: 0 2px 12px rgba(31,58,95,.08);
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body { margin: 0; background: var(--hell); color: var(--text); font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+    a { color: var(--blau); }
+    h1, h2, h3 { color: var(--blau); line-height: 1.25; margin: 0 0 .5em; }
+    h1 { font-size: clamp(1.8rem, 5.5vw, 2.8rem); }
+    h2 { font-size: clamp(1.45rem, 4vw, 2rem); }
+    h3 { font-size: 1.1rem; }
+    .container { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+    section { padding: 48px 0; }
+    .einleitung { max-width: 46em; color: var(--leise); margin-bottom: 24px; }
+    .button { display: inline-block; background: var(--orange); color: var(--button-text); font-weight: 700; text-decoration: none; border: 0; border-radius: 8px; padding: 13px 22px; font: inherit; font-weight: 700; cursor: pointer; }
+    .button:hover { background: #F08A3E; }
+    .button.sek { background: transparent; color: #fff; border: 2px solid #fff; }
+    .button.sek-hell { background: #fff; color: var(--blau); border: 2px solid var(--blau); }
+    :focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+    .demo-hinweis { background: var(--orange); color: var(--button-text); text-align: center; font-weight: 700; padding: 8px 16px; font-size: .95rem; }
+    .demo-hinweis span { font-weight: 400; }
+
+    .hero { background: var(--blau); color: #E6ECF3; padding: 48px 0 56px; }
+    .hero h1 { color: #fff; max-width: 18em; }
+    .hero p { font-size: 1.12rem; max-width: 40em; }
+    .hero .knoepfe { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+    .hero .label { display: inline-block; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; color: #FFD2A8; font-weight: 700; margin-bottom: 8px; }
+    .paket { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+    .paket li { background: rgba(255,255,255,.08); border-radius: 8px; padding: 10px 14px; font-size: .95rem; }
+    .paket strong { color: #fff; }
+
+    .karten { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .karte { background: #fff; border-radius: var(--radius); box-shadow: var(--schatten); padding: 20px; }
+    .karte.akzent { border-top: 4px solid var(--orange); }
+    .karte p { margin: 0; color: var(--leise); }
+    .zahl { font-size: 2rem; font-weight: 800; color: var(--orange-text); line-height: 1; margin-bottom: 6px; display: block; }
+
+    /* Anmeldeseite */
+    .zweispaltig { display: grid; gap: 32px; align-items: center; }
+    .telefon { width: 300px; max-width: 100%; margin: 0 auto; border: 10px solid #1B2433; border-radius: 34px; overflow: hidden; background: #1B2433; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+    .telefon iframe { display: block; width: 100%; height: 560px; border: 0; background: #fff; }
+    .checkliste { list-style: none; padding: 0; margin: 16px 0 24px; }
+    .checkliste li { position: relative; padding-left: 30px; margin-bottom: 10px; }
+    .checkliste li::before { content: ""; position: absolute; left: 0; top: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--orange) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.5l3 3 6-7' fill='none' stroke='%2314243A' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat; }
+    .knopfreihe { display: flex; flex-wrap: wrap; gap: 12px; }
+
+    /* Zeitleiste */
+    .weiss { background: #fff; }
+    .spur-huelle { overflow-x: auto; margin: 8px 0 32px; padding-bottom: 8px; }
+    .spur { position: relative; min-width: 760px; height: 222px; margin: 0 8px; }
+    .spur .linie { position: absolute; left: 0; right: 0; top: 94px; height: 6px; background: var(--rand); border-radius: 3px; }
+    .spur .linie span { position: absolute; top: 0; bottom: 0; left: 0; width: 66.6%; background: var(--blau); border-radius: 3px; }
+    .spur .monat { position: absolute; top: 106px; font-size: .78rem; color: var(--leise); transform: translateX(-50%); white-space: nowrap; }
+    .spur .punkt { position: absolute; transform: translateX(-50%); text-align: center; width: 120px; font-size: .82rem; line-height: 1.3; }
+    .spur .punkt b { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--orange); color: var(--button-text); font-size: .9rem; margin-bottom: 4px; }
+    .spur .punkt.oben { top: 0; }
+    .spur .punkt.unten { top: 134px; }
+    .spur .punkt.oben::after { content: ""; display: block; width: 2px; height: 22px; background: var(--orange); margin: 2px auto 0; }
+    .spur .punkt.links, .spur .monat.links { transform: none; text-align: left; }
+    .spur .punkt.rechts { transform: translateX(-100%); text-align: right; }
+    .spur .punkt.links::after { margin-left: 14px; }
+    .spur .punkt.rechts::after { margin-right: 14px; margin-left: auto; }
+    .spur .ereignis { position: absolute; top: 85px; transform: translateX(-50%); width: 24px; height: 24px; border-radius: 50%; background: var(--blau); border: 4px solid #fff; box-shadow: 0 0 0 2px var(--blau); }
+    .spur .ereignis[style="left:0%"] { transform: none; }
+    .spur .monat strong { color: var(--blau); }
+    .spur .bedingt b { background: #fff; border: 2px dashed var(--orange-text); color: var(--orange-text); }
+
+    .zeitleiste { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .zeitleiste li { display: grid; grid-template-columns: 44px 1fr; gap: 12px; background: var(--hell); border-radius: 10px; padding: 14px; }
+    .zeitleiste .nr { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--blau); color: #fff; font-weight: 800; }
+    .zeitleiste h3 { margin: 0 0 2px; }
+    .zeitleiste .wann { display: inline-block; font-size: .8rem; font-weight: 700; color: var(--orange-text); background: var(--orange-hell); border-radius: 999px; padding: 2px 10px; margin-bottom: 4px; }
+    .zeitleiste p { margin: 0; color: var(--leise); font-size: .95rem; }
+    .zeitleiste button { margin-top: 6px; background: none; border: 0; padding: 0; color: var(--blau); text-decoration: underline; font: inherit; font-size: .9rem; cursor: pointer; }
+
+    /* Mail-Vorschau */
+    .vorschau { display: grid; gap: 20px; }
+    .mail-liste { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+    .mail-liste button { width: 100%; text-align: left; background: #fff; border: 2px solid transparent; border-radius: 10px; padding: 10px 12px; font: inherit; cursor: pointer; box-shadow: var(--schatten); min-width: 190px; color: var(--text); }
+    .mail-liste button[aria-pressed="true"] { border-color: var(--orange); background: var(--orange-hell); }
+    .mail-liste .n { font-weight: 800; color: var(--orange-text); margin-right: 6px; }
+    .mail-liste .t { font-weight: 700; color: var(--blau); }
+    .mail-liste .w { display: block; font-size: .8rem; color: var(--leise); }
+
+    .posteingang { background: #fff; border-radius: 10px; box-shadow: var(--schatten); padding: 14px 16px; margin-bottom: 12px; display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; }
+    .posteingang .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--blau); display: grid; place-items: center; }
+    .posteingang .avatar img { width: 26px; }
+    .posteingang .von { font-size: .85rem; color: var(--leise); }
+    .posteingang .betreff { font-weight: 700; color: var(--text); }
+    .posteingang .pre { color: var(--leise); font-size: .92rem; }
+
+    .steuerung { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .umschalter { display: inline-flex; background: #fff; border-radius: 999px; padding: 4px; box-shadow: var(--schatten); }
+    .umschalter button { border: 0; background: none; font: inherit; font-size: .9rem; padding: 7px 14px; border-radius: 999px; cursor: pointer; color: var(--blau); }
+    .umschalter button[aria-pressed="true"] { background: var(--blau); color: #fff; }
+    .rahmen { display: flex; justify-content: center; background: #E3E8EF; border-radius: 12px; padding: 16px 8px; }
+    .rahmen iframe { border: 0; background: #fff; width: 100%; max-width: 700px; height: 1100px; border-radius: 6px; transition: max-width .2s; }
+    .rahmen.handy iframe { max-width: 375px; height: 900px; border: 8px solid #1B2433; border-radius: 28px; }
+    .platzhalter-info { font-size: .9rem; color: var(--leise); margin-top: 12px; }
+    code { background: #E9EDF3; padding: 1px 6px; border-radius: 4px; font-size: .88em; }
+
+    /* Automatik */
+    .konsole { background: #12202F; color: #DCE6F2; border-radius: 10px; padding: 16px; overflow-x: auto; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
+    .konsole .p { color: #FFB877; }
+
+    .kontakt { background: var(--blau); color: #E6ECF3; border-radius: var(--radius); padding: 28px 24px; }
+    .kontakt h2 { color: #fff; }
+    .kontakt .hinweis-anpassen { font-size: .85rem; color: #C9D3E0; }
+
+    footer { padding: 24px 0 40px; font-size: .9rem; color: var(--leise); }
+
+    @media (min-width: 860px) {
+      .zweispaltig { grid-template-columns: 1.1fr .9fr; }
+      .vorschau { grid-template-columns: 260px 1fr; }
+      .mail-liste { flex-direction: column; overflow: visible; }
+      .mail-liste button { min-width: 0; }
+      .zeitleiste { grid-template-columns: 1fr 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .rahmen iframe { transition: none; } }
+  </style>
+</head>
+<body>
+  <div class="demo-hinweis" role="note">Demo – fiktiver Betrieb <span>· Heizungsbau Mustermann GmbH gibt es nicht. Alle Namen, Daten und Kontakte sind erfunden.</span></div>
+
+  <header class="hero">
+    <div class="container">
+      <span class="label">E-Mail-Marketing für Handwerksbetriebe</span>
+      <h1>Kunden, die von selbst wiederkommen – mit automatischen Wartungserinnerungen.</h1>
+      <p>So sieht das fertige System aus, das ich für Ihren Betrieb einrichte – hier am Beispiel eines Heizungsbauers. Ihre Kunden melden sich einmal an. Danach erinnert sie Ihr Betrieb jedes Jahr rechtzeitig an die Wartung. Ganz ohne Zettelwirtschaft.</p>
+      <div class="knoepfe">
+        <a class="button" href="landingpage/index.html">Anmeldeseite ansehen</a>
+        <a class="button sek" href="#mails">Die 7 E-Mails ansehen</a>
+      </div>
+      <ul class="paket" aria-label="Lieferumfang">
+        <li><strong>Anmeldeseite</strong><br>mit Double-Opt-in</li>
+        <li><strong>A5-Aushang</strong><br>mit QR-Code</li>
+        <li><strong>7 fertige E-Mails</strong><br>in Ihrem Design</li>
+        <li><strong>Automatik</strong><br>wer bekommt wann welche Mail</li>
+      </ul>
+    </div>
+  </header>
+
+  <main>
+    <section id="nutzen" aria-labelledby="nutzen-titel">
+      <div class="container">
+        <h2 id="nutzen-titel">Was bringt das Ihrem Betrieb?</h2>
+        <p class="einleitung">Die meisten Wartungskunden gehen nicht verloren, weil sie unzufrieden sind. Sie vergessen den Termin einfach – oder rufen im Januar den an, der zuerst ans Telefon geht.</p>
+        <div class="karten">
+          <div class="karte akzent"><span class="zahl">1×</span><h3>Einmal einrichten</h3><p>Danach laufen die Erinnerungen von allein. Sie und Ihr Büro haben im Alltag keinen Zusatzaufwand.</p></div>
+          <div class="karte akzent"><span class="zahl">↻</span><h3>Mehr Stammkunden</h3><p>Wer jedes Jahr rechtzeitig von Ihnen hört, bucht wieder bei Ihnen und nicht beim Wettbewerb.</p></div>
+          <div class="karte akzent"><span class="zahl">▦</span><h3>Planbare Auslastung</h3><p>Wartungen verteilen sich übers Jahr. Weniger Notdienst-Stress, wenn im Winter alle gleichzeitig anrufen.</p></div>
+          <div class="karte akzent"><span class="zahl">★</span><h3>Mehr Google-Bewertungen</h3><p>Nach jedem Termin werden zufriedene Kunden freundlich um eine Bewertung gebeten. Das wirkt auf Neukunden.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="anmeldung" class="weiss" aria-labelledby="anmeldung-titel">
+      <div class="container zweispaltig">
+        <div>
+          <h2 id="anmeldung-titel">1. So melden sich Ihre Kunden an</h2>
+          <p class="einleitung">Eine schlanke Anmeldeseite im Design Ihres Betriebs. Der Link kommt auf die Website, in die E-Mail-Signatur und auf Rechnungen. Für die Ladentheke und den Firmenwagen gibt es einen A5-Aushang mit QR-Code.</p>
+          <ul class="checkliste">
+            <li>Auf dem Handy in unter einer Minute ausgefüllt</li>
+            <li>Rechtssicher aufgebaut: Einwilligungstext, Double-Opt-in, Abmeldung jederzeit möglich</li>
+            <li>Fragt gleich Heizungsart und letzte Wartung ab, damit die Erinnerung zum richtigen Zeitpunkt kommt</li>
+            <li>Kein Tracking, keine Cookies</li>
+          </ul>
+          <div class="knopfreihe">
+            <a class="button" href="landingpage/index.html">Anmeldeseite öffnen</a>
+            <a class="button sek-hell" href="landingpage/aushang.html">A5-Aushang öffnen</a>
+          </div>
+        </div>
+        <div class="telefon">
+          <iframe src="landingpage/index.html" title="Vorschau der Anmeldeseite auf dem Handy" loading="lazy"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section id="zeitleiste" aria-labelledby="zeitleiste-titel">
+      <div class="container">
+        <h2 id="zeitleiste-titel">2. Die Mail-Strecke: wer bekommt wann was?</h2>
+        <p class="einleitung">Sieben E-Mails, die automatisch zum richtigen Zeitpunkt verschickt werden. Gerechnet wird ab der letzten Wartung (Intervall 12 Monate). Wer schon einen Termin hat, bekommt keine weiteren Erinnerungen.</p>
+
+        <div class="spur-huelle" role="img" aria-label="Zeitstrahl eines Wartungsjahres: Wartung bei Monat 0, Bewertungsanfrage 2 Tage später, Herbstmail im September, Erinnerung 4 Wochen und 1 Woche vor Fälligkeit nach 12 Monaten, Reaktivierung nach 18 Monaten ohne Termin.">
+          <div class="spur" aria-hidden="true">
+            <div class="linie"><span></span></div>
+            <div class="ereignis" style="left:0%"></div>
+            <div class="ereignis" style="left:66.6%"></div>
+            <div class="monat links" style="left:0%"><strong>Wartung</strong></div>
+            <div class="monat" style="left:22.2%">4 Mon.</div>
+            <div class="monat" style="left:44.4%">8 Mon.</div>
+            <div class="monat" style="left:66.6%"><strong>12 Mon. · fällig</strong></div>
+            <div class="monat" style="left:88.8%">16 Mon.</div>
+            <div class="punkt oben links" style="left:0.4%"><b>5</b><br>Bewertung<br>+2 Tage</div>
+            <div class="punkt oben" style="left:30%"><b>6</b><br>Herbstmail<br>15. September</div>
+            <div class="punkt oben" style="left:61.1%"><b>3</b><br>Erinnerung<br>−4 Wochen</div>
+            <div class="punkt unten bedingt" style="left:65.3%"><b>4</b><br>Letzte Erinnerung<br>−1 Woche*</div>
+            <div class="punkt oben bedingt rechts" style="left:100%"><b>7</b><br>Reaktivierung<br>18 Mon.*</div>
+          </div>
+        </div>
+        <p class="platzhalter-info" style="margin-top:-20px">* nur, wenn bis dahin kein Termin vereinbart wurde. Mail 1 und 2 kommen einmalig direkt bei der Anmeldung.</p>
+
+        <ol class="zeitleiste" id="zeitleiste-liste"></ol>
+      </div>
+    </section>
+
+    <section id="mails" class="weiss" aria-labelledby="mails-titel">
+      <div class="container">
+        <h2 id="mails-titel">3. Die E-Mails in der Vorschau</h2>
+        <p class="einleitung">Einheitliches Design mit Logo und Farben des Betriebs, persönliche Anrede und ein klarer Button. Die Texte klingen nach Handwerksbetrieb und nicht nach Werbeagentur. Getestet für gängige Mailprogramme und das Handy.</p>
+
+        <div class="vorschau">
+          <ul class="mail-liste" id="mail-liste" aria-label="E-Mail auswählen"></ul>
+          <div>
+            <div class="steuerung">
+              <div class="umschalter" role="group" aria-label="Ansicht">
+                <button type="button" data-ansicht="desktop" aria-pressed="true">Desktop</button>
+                <button type="button" data-ansicht="handy" aria-pressed="false">Handy</button>
+              </div>
+              <div class="umschalter" role="group" aria-label="Daten">
+                <button type="button" data-daten="beispiel" aria-pressed="true">Beispieldaten</button>
+                <button type="button" data-daten="platzhalter" aria-pressed="false">Platzhalter</button>
+              </div>
+              <a id="neuer-tab" href="#" target="_blank" rel="noopener">In neuem Tab öffnen ↗</a>
+            </div>
+            <div class="posteingang" aria-live="polite">
+              <div class="avatar"><img src="landingpage/assets/favicon.svg" alt=""></div>
+              <div>
+                <div class="von">Heizungsbau Mustermann &lt;info@mustermann-demo.de&gt;</div>
+                <div class="betreff" id="pv-betreff">–</div>
+                <div class="pre" id="pv-pre">–</div>
+              </div>
+            </div>
+            <div class="rahmen" id="rahmen">
+              <iframe id="mail-frame" title="Vorschau der ausgewählten E-Mail"></iframe>
+            </div>
+            <p class="platzhalter-info" id="platzhalter-info"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="automatik" aria-labelledby="automatik-titel">
+      <div class="container">
+        <h2 id="automatik-titel">4. Die Automatik dahinter</h2>
+        <p class="einleitung">Aus der Kundenliste wird jeden Tag berechnet, wer heute welche Mail bekommt. In der Demo übernimmt das ein kleines Skript mit 15 erfundenen Kunden. Im echten Betrieb richte ich die gleiche Logik in Ihrem Versandtool ein, zum Beispiel bei einem deutschen Anbieter mit Server in der EU.</p>
+        <div class="konsole" role="region" aria-label="Beispielausgabe des Planungsskripts" tabindex="0"><span class="p">$ npm run plan -- --stichtag 2026-10-06</span>
+
+Datum       Status          Kunde  Name              Mail                     Wartung fällig
+06.10.2026  ▶ heute senden  K001   Anna Beispiel     3 · Wartungserinnerung   03.11.2026
+06.10.2026  ▶ heute senden  K004   Dieter Fiktiv     5 · Bewertungsanfrage    04.10.2027
+06.10.2026  ▶ heute senden  K008   Hans Vorlage      2 · Willkommen
+06.10.2026  ▶ heute senden  K015   Olga Prototyp     7 · Reaktivierung        19.08.2025
+13.10.2026  geplant         K002   Bernd Probe       4 · Letzte Erinnerung    20.10.2026
+13.10.2026  geplant         K010   Jürgen Entwurf    3 · Wartungserinnerung   10.11.2026
+…
+
+Hinweise:  K007 wartet auf Bestätigung · K008 Datum der letzten Wartung fehlt · K011 abgemeldet</div>
+        <p class="platzhalter-info">Gekürzte Beispielausgabe. Das Skript gibt den Zeitplan zusätzlich als JSON aus und erzeugt auf Wunsch die fertig personalisierte Mail für einen Kunden (<code>npm run plan -- --kunde K001</code>). Es wird nichts verschickt.</p>
+      </div>
+    </section>
+
+    <section aria-labelledby="kontakt-titel">
+      <div class="container">
+        <div class="kontakt">
+          <h2 id="kontakt-titel">Das möchten Sie auch für Ihren Betrieb?</h2>
+          <p>Ich passe alles an Ihren Betrieb an: Name, Logo, Farben, Texte und Leistungen, zum Beispiel für Wartungsverträge, Badsanierung oder Klimaanlagen. Ich richte das Versandtool ein und übernehme Ihre bestehende Kundenliste, sofern dafür Einwilligungen vorliegen.</p>
+          <!-- ANPASSEN: Hier Ihre eigenen Kontaktdaten als Dienstleister eintragen. -->
+          <p><strong>Ihr Ansprechpartner:</strong> [Ihr Name] · [Ihre E-Mail-Adresse] · [Ihre Telefonnummer]</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">Demo – fiktiver Betrieb. Die Heizungsbau Mustermann GmbH und alle Kundendaten sind frei erfunden. Es werden keine Daten erhoben und keine E-Mails verschickt. · <a href="landingpage/impressum.html">Impressum (Platzhalter)</a> · <a href="landingpage/datenschutz.html">Datenschutz (Platzhalter)</a></div>
+  </footer>
+
+  <script src="emails/html/mails.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      var daten = window.MAIL_STRECKE;
+      var liste = document.getElementById('mail-liste');
+      var zeitleiste = document.getElementById('zeitleiste-liste');
+      if (!daten) {
+        var fehler = '<li>Die Mail-Vorschau fehlt. Bitte zuerst <code>npm run build:emails</code> ausführen.</li>';
+        liste.innerHTML = fehler;
+        zeitleiste.innerHTML = fehler;
+        return;
+      }
+
+      var frame = document.getElementById('mail-frame');
+      var rahmen = document.getElementById('rahmen');
+      var neuerTab = document.getElementById('neuer-tab');
+      var zustand = { nr: 1, ansicht: 'desktop', daten: 'beispiel' };
+
+      function el(tag, klasse, text) {
+        var e = document.createElement(tag);
+        if (klasse) e.className = klasse;
+        if (text !== undefined) e.textContent = text;
+        return e;
+      }
+
+      // Zeitleiste
+      daten.mails.forEach(function (m) {
+        var li = el('li');
+        li.appendChild(el('span', 'nr', String(m.nr)));
+        var box = el('div');
+        box.appendChild(el('span', 'wann', m.kurz));
+        box.appendChild(el('h3', '', m.name));
+        box.appendChild(el('p', '', m.ausloeser));
+        var p = el('p');
+        p.appendChild(document.createTextNode('Betreff: „' + m.betreff_beispiel + '“'));
+        box.appendChild(p);
+        var b = el('button', '', 'Mail ansehen');
+        b.type = 'button';
+        b.addEventListener('click', function () { waehle(m.nr); document.getElementById('mails').scrollIntoView(); });
+        box.appendChild(b);
+        li.appendChild(box);
+        zeitleiste.appendChild(li);
+      });
+
+      // Mail-Auswahl
+      daten.mails.forEach(function (m) {
+        var li = el('li');
+        var b = el('button');
+        b.type = 'button';
+        b.dataset.nr = m.nr;
+        b.appendChild(el('span', 'n', String(m.nr)));
+        b.appendChild(el('span', 't', m.name));
+        b.appendChild(el('span', 'w', m.kurz));
+        b.addEventListener('click', function () { waehle(m.nr); });
+        li.appendChild(b);
+        liste.appendChild(li);
+      });
+
+      function passeHoeheAn() {
+        // Klappt nur über einen lokalen Server (gleiche Herkunft); bei file:// bleibt die feste Höhe.
+        try {
+          var h = frame.contentDocument.documentElement.scrollHeight;
+          if (h > 200) frame.style.height = (h + 4) + 'px';
+        } catch (e) { /* ignorieren */ }
+      }
+      frame.addEventListener('load', passeHoeheAn);
+
+      function zeige() {
+        var m = daten.mails.filter(function (x) { return x.nr === zustand.nr; })[0];
+        var url = 'emails/html/' + (zustand.daten === 'beispiel' ? 'beispiel/' : '') + m.datei + '.html';
+        frame.style.height = '';
+        frame.src = url;
+        neuerTab.href = url;
+        var bsp = zustand.daten === 'beispiel';
+        document.getElementById('pv-betreff').textContent = bsp ? m.betreff_beispiel : m.betreff;
+        document.getElementById('pv-pre').textContent = bsp ? m.preheader_beispiel : m.preheader;
+        rahmen.classList.toggle('handy', zustand.ansicht === 'handy');
+        document.getElementById('platzhalter-info').innerHTML = 'Platzhalter in dieser Mail: ' +
+          m.platzhalter.map(function (p) { return '<code>{{' + p + '}}</code>'; }).join(' ') +
+          ' · Sie werden beim Versand pro Kunde automatisch gefüllt.';
+        liste.querySelectorAll('button').forEach(function (b) {
+          b.setAttribute('aria-pressed', String(+b.dataset.nr === zustand.nr));
+        });
+      }
+
+      function waehle(nr) { zustand.nr = nr; zeige(); }
+
+      document.querySelectorAll('[data-ansicht]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          zustand.ansicht = b.dataset.ansicht;
+          document.querySelectorAll('[data-ansicht]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+          zeige();
+        });
+      });
+      document.querySelectorAll('[data-daten]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          zustand.daten = b.dataset.daten;
+          document.querySelectorAll('[data-daten]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+          zeige();
+        });
+      });
+
+      zeige();
+    })();
+  </script>
+</body>
+</html>

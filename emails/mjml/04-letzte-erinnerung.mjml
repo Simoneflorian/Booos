@@ -1,0 +1,31 @@
+<mjml lang="de">
+  <mj-head>
+    <mj-title>Kurze Erinnerung: Ihre Wartung ist nächste Woche fällig</mj-title>
+    <mj-preview>Noch kein Termin? Wir haben in den nächsten Wochen noch Lücken im Kalender.</mj-preview>
+    <mj-include path="./_partials/kopf.mjml" />
+  </mj-head>
+  <mj-body>
+    <mj-include path="./_partials/header.mjml" />
+    <mj-section>
+      <mj-column>
+        <mj-text mj-class="headline">Nur noch eine Woche bis zur Wartung</mj-text>
+        <mj-text>
+          Hallo {{vorname}},<br /><br />
+          wir wollten nur noch einmal kurz nachhaken: Am <strong>{{faellig_am}}</strong> ist die
+          Wartung Ihrer {{heizungsart}} fällig, und bei uns steht noch kein Termin im Kalender.
+        </mj-text>
+        <mj-text>
+          Kein Problem, wenn es nicht genau auf den Tag klappt – Hauptsache, die Anlage wird
+          regelmäßig gecheckt. Unsere Monteure haben in den nächsten Wochen noch freie Termine.
+        </mj-text>
+        <mj-button href="[[termin_link]]">Termin vereinbaren</mj-button>
+        <mj-text mj-class="klein">
+          Sie haben schon einen Termin ausgemacht? Dann ist diese E-Mail erledigt – danke!
+          Danach kommt bis zur nächsten Wartung keine Erinnerung mehr.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="./_partials/signatur.mjml" />
+    <mj-include path="./_partials/footer.mjml" />
+  </mj-body>
+</mjml>

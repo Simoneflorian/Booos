@@ -1,0 +1,19 @@
+<mj-section background-color="[[farbe_primaer]]" padding="24px 28px">
+  <mj-column>
+    <mj-text color="#FFFFFF" font-size="13px" line-height="1.6" padding="0 0 12px">
+      <strong>[[firma]]</strong> · [[gewerk]]<br />
+      [[strasse]] · [[plz_ort]]<br />
+      Tel. <a href="tel:[[telefon_link]]" style="color:#FFFFFF;">[[telefon]]</a> · <a href="mailto:[[email]]" style="color:#FFFFFF;">[[email]]</a><br />
+      Geschäftsführer: [[inhaber]] · [[registergericht]] · USt-IdNr.: [[ust_id]]
+    </mj-text>
+    <mj-text color="#FFFFFF" font-size="13px" line-height="1.6" padding="0">
+      Sie erhalten diese E-Mail, weil Sie sich für die Wartungserinnerung von [[firma]] angemeldet haben.
+      <a href="{{abmelde_link}}" style="color:#FFFFFF;">Hier abmelden</a> ·
+      <a href="https://[[website]]/impressum" style="color:#FFFFFF;">Impressum</a> ·
+      <a href="https://[[website]]/datenschutz" style="color:#FFFFFF;">Datenschutz</a>
+    </mj-text>
+    <mj-text color="#C9D3E0" font-size="12px" padding="12px 0 0">
+      Demo – fiktiver Betrieb. Alle Namen, Adressen und Nummern sind erfunden.
+    </mj-text>
+  </mj-column>
+</mj-section>

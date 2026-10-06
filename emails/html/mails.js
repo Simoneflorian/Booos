@@ -1,0 +1,138 @@
+window.MAIL_STRECKE = {
+  "erstellt": "2026-10-06T14:59:21.109Z",
+  "firma": "Heizungsbau Mustermann GmbH",
+  "platzhalter": {
+    "vorname": "Vorname des Empfängers",
+    "nachname": "Nachname des Empfängers",
+    "heizungsart": "Art der Heizung, z. B. „Gasheizung“, „Wärmepumpe“",
+    "letzte_wartung": "Datum der letzten Wartung (TT.MM.JJJJ)",
+    "faellig_am": "Datum der nächsten fälligen Wartung (TT.MM.JJJJ)",
+    "bestaetigungs_link": "Persönlicher Double-Opt-in-Link (nur Mail 1)",
+    "abmelde_link": "Persönlicher Abmeldelink (alle Mails)"
+  },
+  "mails": [
+    {
+      "nr": 1,
+      "datei": "01-bestaetigung",
+      "name": "Bestätigung (Double-Opt-in)",
+      "ausloeser": "Sofort nach dem Absenden des Anmeldeformulars",
+      "kurz": "Tag 0",
+      "betreff": "Bitte bestätigen Sie Ihre Anmeldung",
+      "preheader": "Ein Klick – dann erinnern wir Sie rechtzeitig an Ihre Heizungswartung.",
+      "betreff_beispiel": "Bitte bestätigen Sie Ihre Anmeldung",
+      "preheader_beispiel": "Ein Klick – dann erinnern wir Sie rechtzeitig an Ihre Heizungswartung.",
+      "platzhalter": [
+        "vorname",
+        "bestaetigungs_link",
+        "abmelde_link"
+      ],
+      "groesse_kb": 17.5
+    },
+    {
+      "nr": 2,
+      "datei": "02-willkommen",
+      "name": "Willkommen",
+      "ausloeser": "Sofort nach Klick auf den Bestätigungslink",
+      "kurz": "Tag 0",
+      "betreff": "Willkommen – ab jetzt denken wir an Ihre Wartung",
+      "preheader": "Was Sie von uns bekommen: rechtzeitige Erinnerungen, ab und zu ein Tipp – sonst nichts.",
+      "betreff_beispiel": "Willkommen – ab jetzt denken wir an Ihre Wartung",
+      "preheader_beispiel": "Was Sie von uns bekommen: rechtzeitige Erinnerungen, ab und zu ein Tipp – sonst nichts.",
+      "platzhalter": [
+        "vorname",
+        "heizungsart",
+        "abmelde_link"
+      ],
+      "groesse_kb": 18.3
+    },
+    {
+      "nr": 3,
+      "datei": "03-erinnerung-4-wochen",
+      "name": "Wartungserinnerung",
+      "ausloeser": "4 Wochen vor Fälligkeit (letzte Wartung + 12 Monate)",
+      "kurz": "Fälligkeit − 28 Tage",
+      "betreff": "{{vorname}}, Ihre Heizungswartung ist in 4 Wochen fällig",
+      "preheader": "Jetzt in Ruhe einen Termin aussuchen – bevor es im Kalender eng wird.",
+      "betreff_beispiel": "Anna, Ihre Heizungswartung ist in 4 Wochen fällig",
+      "preheader_beispiel": "Jetzt in Ruhe einen Termin aussuchen – bevor es im Kalender eng wird.",
+      "platzhalter": [
+        "vorname",
+        "heizungsart",
+        "faellig_am",
+        "abmelde_link"
+      ],
+      "groesse_kb": 18.2
+    },
+    {
+      "nr": 4,
+      "datei": "04-letzte-erinnerung",
+      "name": "Letzte Erinnerung",
+      "ausloeser": "1 Woche vor Fälligkeit – nur, wenn noch kein Termin vereinbart ist",
+      "kurz": "Fälligkeit − 7 Tage",
+      "betreff": "Kurze Erinnerung: Ihre Wartung ist nächste Woche fällig",
+      "preheader": "Noch kein Termin? Wir haben in den nächsten Wochen noch Lücken im Kalender.",
+      "betreff_beispiel": "Kurze Erinnerung: Ihre Wartung ist nächste Woche fällig",
+      "preheader_beispiel": "Noch kein Termin? Wir haben in den nächsten Wochen noch Lücken im Kalender.",
+      "platzhalter": [
+        "vorname",
+        "faellig_am",
+        "heizungsart",
+        "abmelde_link"
+      ],
+      "groesse_kb": 17.5
+    },
+    {
+      "nr": 5,
+      "datei": "05-bewertung",
+      "name": "Bewertungsanfrage",
+      "ausloeser": "2 Tage nach erledigtem Wartungstermin",
+      "kurz": "Termin + 2 Tage",
+      "betreff": "Wie zufrieden waren Sie mit unserem Besuch?",
+      "preheader": "Eine Minute, die uns als kleinem Betrieb wirklich weiterhilft.",
+      "betreff_beispiel": "Wie zufrieden waren Sie mit unserem Besuch?",
+      "preheader_beispiel": "Eine Minute, die uns als kleinem Betrieb wirklich weiterhilft.",
+      "platzhalter": [
+        "vorname",
+        "heizungsart",
+        "faellig_am",
+        "abmelde_link"
+      ],
+      "groesse_kb": 18.3
+    },
+    {
+      "nr": 6,
+      "datei": "06-herbst",
+      "name": "Saisonmail Herbst",
+      "ausloeser": "Einmal im Jahr am 15. September an alle bestätigten Kontakte",
+      "kurz": "15. September",
+      "betreff": "Heizung fit für den Winter – 4 Tipps vom Fachmann",
+      "preheader": "Plus: Bis 30. November Wartung buchen und den Effizienz-Check gratis dazu bekommen.",
+      "betreff_beispiel": "Heizung fit für den Winter – 4 Tipps vom Fachmann",
+      "preheader_beispiel": "Plus: Bis 30. November Wartung buchen und den Effizienz-Check gratis dazu bekommen.",
+      "platzhalter": [
+        "vorname",
+        "heizungsart",
+        "abmelde_link"
+      ],
+      "groesse_kb": 18.7
+    },
+    {
+      "nr": 7,
+      "datei": "07-reaktivierung",
+      "name": "Reaktivierung",
+      "ausloeser": "Letzte Wartung über 18 Monate her und kein Termin vereinbart",
+      "kurz": "Wartung + 18 Monate",
+      "betreff": "Lange nicht gesehen, {{vorname}} – wie geht es Ihrer Heizung?",
+      "preheader": "Ihre letzte Wartung ist über 18 Monate her. Sollen wir mal wieder vorbeischauen?",
+      "betreff_beispiel": "Lange nicht gesehen, Anna – wie geht es Ihrer Heizung?",
+      "preheader_beispiel": "Ihre letzte Wartung ist über 18 Monate her. Sollen wir mal wieder vorbeischauen?",
+      "platzhalter": [
+        "vorname",
+        "heizungsart",
+        "letzte_wartung",
+        "abmelde_link"
+      ],
+      "groesse_kb": 17.6
+    }
+  ]
+};

@@ -1,0 +1,35 @@
+<mjml lang="de">
+  <mj-head>
+    <mj-title>Wie zufrieden waren Sie mit unserem Besuch?</mj-title>
+    <mj-preview>Eine Minute, die uns als kleinem Betrieb wirklich weiterhilft.</mj-preview>
+    <mj-include path="./_partials/kopf.mjml" />
+  </mj-head>
+  <mj-body>
+    <mj-include path="./_partials/header.mjml" />
+    <mj-section>
+      <mj-column>
+        <mj-text mj-class="headline">Danke für Ihr Vertrauen, {{vorname}}!</mj-text>
+        <mj-text>
+          Die Wartung Ihrer {{heizungsart}} ist erledigt. Wir hoffen, es lief alles so,
+          wie Sie es sich vorgestellt haben – pünktlich, sauber und ohne Überraschungen.
+        </mj-text>
+        <mj-text>
+          Als kleiner Betrieb leben wir von Empfehlungen. Wenn Sie zufrieden waren, hilft uns
+          eine kurze Bewertung bei Google sehr. Das dauert keine Minute.
+        </mj-text>
+        <mj-text font-size="28px" line-height="1" color="[[farbe_akzent]]" padding="12px 0 0"><span aria-hidden="true">★★★★★</span></mj-text>
+        <mj-button href="[[bewertungs_link]]">Jetzt bewerten</mj-button>
+        <mj-text mj-class="box">
+          <strong>Lief etwas nicht rund?</strong><br />
+          Dann sagen Sie es bitte zuerst uns – einfach auf diese E-Mail antworten oder
+          unter [[telefon]] anrufen. Wir kümmern uns darum.
+        </mj-text>
+        <mj-text mj-class="klein">
+          Ihre nächste Wartung ist am {{faellig_am}} fällig. Wir erinnern Sie rechtzeitig.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="./_partials/signatur.mjml" />
+    <mj-include path="./_partials/footer.mjml" />
+  </mj-body>
+</mjml>

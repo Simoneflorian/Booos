@@ -1,0 +1,32 @@
+<mjml lang="de">
+  <mj-head>
+    <mj-title>Lange nicht gesehen, {{vorname}} – wie geht es Ihrer Heizung?</mj-title>
+    <mj-preview>Ihre letzte Wartung ist über 18 Monate her. Sollen wir mal wieder vorbeischauen?</mj-preview>
+    <mj-include path="./_partials/kopf.mjml" />
+  </mj-head>
+  <mj-body>
+    <mj-include path="./_partials/header.mjml" />
+    <mj-section>
+      <mj-column>
+        <mj-text mj-class="headline">Lange nicht gesehen!</mj-text>
+        <mj-text>
+          Hallo {{vorname}},<br /><br />
+          bei uns steht, dass Ihre {{heizungsart}} zuletzt am <strong>{{letzte_wartung}}</strong>
+          gewartet wurde. Das ist jetzt über anderthalb Jahre her.
+        </mj-text>
+        <mj-text>
+          Vielleicht ist es einfach untergegangen – das passiert jedem. Wir schauen gern wieder
+          vorbei. Nach einer längeren Pause sehen wir uns die Anlage besonders gründlich an,
+          damit Sie im Winter keine bösen Überraschungen erleben.
+        </mj-text>
+        <mj-button href="[[termin_link]]">Termin vereinbaren</mj-button>
+        <mj-text mj-class="klein">
+          Sie sind inzwischen anderweitig versorgt oder brauchen keine Erinnerungen mehr?
+          Völlig in Ordnung – mit einem Klick können Sie sich <a href="{{abmelde_link}}">hier abmelden</a>.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="./_partials/signatur.mjml" />
+    <mj-include path="./_partials/footer.mjml" />
+  </mj-body>
+</mjml>

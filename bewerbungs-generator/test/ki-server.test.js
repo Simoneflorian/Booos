@@ -45,7 +45,10 @@ test('KI: Dokumentauswertung sendet PDF, strukturiertes Schema, Modell und Fallb
   const client = fakeClient([textAntwort(JSON.stringify(ergebnis))]);
   ki.setKiClient(client);
   const r = await ki.dokumentAuswerten({ name: 'z.pdf', mime: 'application/pdf', base64: 'JVBERi0=' });
-  assert.deepEqual(r, ergebnis);
+  const { kosten, uebertragen, ...rest } = r;
+  assert.deepEqual(rest, ergebnis);
+  assert.equal(uebertragen.art, 'PDF-Datei (vollständig)');
+  assert.equal(kosten.modell, config.kiModell);
   const p = client.aufrufe[0];
   assert.equal(p.model, config.kiModell);
   assert.equal(p.content, undefined);

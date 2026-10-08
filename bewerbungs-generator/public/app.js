@@ -13,6 +13,8 @@ const LEER = () => ({
   situation: {},
   steuer: {},
   ergebnisse: {},
+  kiEinstellungen: { datensparsam: true, budget: '' },
+  kiKosten: {}, // US-Dollar je Monat, z. B. { '2026-10': 0.42 }
 });
 
 let zustand = LEER();
@@ -125,8 +127,70 @@ async function api(pfad, body, { ki = false } = {}) {
   } catch {
     /* leer */
   }
-  if (!antwort.ok) throw new Error(daten.fehler || `Fehler ${antwort.status}`);
+  if (!antwort.ok) {
+    const fehler = new Error(daten.fehler || `Fehler ${antwort.status}`);
+    fehler.code = daten.code;
+    throw fehler;
+  }
   return daten;
+}
+
+// --- KI-Kosten und -Aufrufe ---
+
+function monat() {
+  return new Date().toISOString().slice(0, 7);
+}
+
+function monatsKosten() {
+  return zustand.kiKosten?.[monat()] || 0;
+}
+
+function dollar(betrag) {
+  return `${Number(betrag || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: betrag < 0.01 ? 4 : 2 })} $`;
+}
+
+function kostenText(k) {
+  if (!k) return '';
+  const teile = [`${k.eingabeToken.toLocaleString('de-DE')} Token Eingabe`, `${k.ausgabeToken.toLocaleString('de-DE')} Ausgabe`];
+  if (k.websuchen) teile.push(`${k.websuchen} Websuche${k.websuchen === 1 ? '' : 'n'}`);
+  return `Kosten: ${k.usd != null ? `ca. ${dollar(k.usd)}` : 'unbekannt'} (${teile.join(', ')})`;
+}
+
+function kostenBuchen(kosten) {
+  if (kosten?.usd == null) return;
+  zustand.kiKosten ||= {};
+  zustand.kiKosten[monat()] = Math.round(((zustand.kiKosten[monat()] || 0) + kosten.usd) * 10000) / 10000;
+  speichern();
+  statusAnzeigen();
+}
+
+// Alle KI-Aufrufe laufen hierüber: Budget-Warnung vorher, Kosten nachher verbuchen.
+async function kiAufruf(pfad, body) {
+  const budget = parseFloat(String(zustand.kiEinstellungen?.budget ?? '').replace(',', '.'));
+  if (budget > 0 && monatsKosten() >= budget
+    && !window.confirm(`Dein KI-Budget von ${dollar(budget)} für diesen Monat ist erreicht (bisher ${dollar(monatsKosten())}). Trotzdem fortfahren?`)) {
+    throw new Error('Abgebrochen – Monatsbudget erreicht. Das Budget lässt sich unter „Start“ → „KI-Modus“ ändern.');
+  }
+  const ergebnis = await api(pfad, body, { ki: true });
+  kostenBuchen(ergebnis?.kosten);
+  return ergebnis;
+}
+
+const KI_EINSTELLUNGS_CODES = ['nicht-eingerichtet', 'schluessel', 'guthaben', 'websuche-aus', 'modell', 'berechtigung'];
+
+function zuKiEinstellungen() {
+  zeigeBereich('start', false);
+  const karte = $('#ki-karte');
+  karte.scrollIntoView({ block: 'start' });
+  ($('#ki-schluessel') || karte).focus?.();
+}
+
+function fehlerElement(e, inKiKarte = false) {
+  return el('div', { class: 'fehler', role: 'alert' },
+    el('p', { text: e.message }),
+    KI_EINSTELLUNGS_CODES.includes(e.code) && !inKiKarte ? el('p', {},
+      el('button', { type: 'button', class: 'knopf klein', onclick: zuKiEinstellungen }, 'KI-Einstellungen öffnen'),
+      e.code === 'guthaben' || e.code === 'websuche-aus' ? el('a', { href: 'https://platform.claude.com', target: '_blank', rel: 'noopener noreferrer', class: 'knopf zweit klein' }, 'Claude Console öffnen ↗') : null) : null);
 }
 
 async function mitLaden(knopf, ziel, fn) {
@@ -137,7 +201,7 @@ async function mitLaden(knopf, ziel, fn) {
   try {
     await fn();
   } catch (e) {
-    if (ziel) ersetzen(ziel, el('p', { class: 'fehler', role: 'alert', text: e.message }));
+    if (ziel) ersetzen(ziel, fehlerElement(e, Boolean(ziel.closest?.('#ki-karte'))));
     meldung(e.message);
   } finally {
     knopf.removeAttribute('aria-busy');
@@ -151,23 +215,40 @@ function kiMoeglich() {
   return zustand.einwilligung.ki && server.kiVerfuegbar;
 }
 
+function kiHinweisText() {
+  if (!server.kiVerfuegbar) return 'KI-Modus ist noch nicht eingerichtet.';
+  if (!zustand.einwilligung.ki) return 'Für KI-Funktionen fehlt noch deine Einwilligung (Haken „KI-Modus“ unter „Start“).';
+  return '';
+}
+
 function kiKnoepfeAktualisieren() {
+  const hinweis = kiHinweisText();
   for (const k of $$('[data-ki]')) {
     if (k.getAttribute('aria-busy') === 'true') continue;
     k.disabled = !kiMoeglich();
-    k.title = !server.kiVerfuegbar
-      ? 'KI-Modus ist nicht eingerichtet (ANTHROPIC_API_KEY in .env – siehe README)'
-      : !zustand.einwilligung.ki ? 'Bitte zuerst unter „Start“ in den KI-Modus einwilligen' : '';
+    k.title = hinweis;
+  }
+  // Sichtbarer Hinweis mit Direktlink unter jeder Knopfleiste mit KI-Funktion
+  for (const leiste of $$('.aktionen')) {
+    if (!leiste.querySelector('[data-ki]') || leiste.closest('#dokument-liste')) continue;
+    let p = leiste.nextElementSibling;
+    if (!p?.classList.contains('ki-hinweis')) {
+      p = el('p', { class: 'ki-hinweis' });
+      leiste.after(p);
+    }
+    ersetzen(p, hinweis ? [hinweis, ' ', el('button', { type: 'button', class: 'link-knopf', onclick: zuKiEinstellungen }, server.kiVerfuegbar ? 'Zu den Einstellungen' : 'Jetzt einrichten')] : null);
+    p.hidden = !hinweis;
   }
 }
 
-function kiErgebnisKarte(titel, text, quellen = []) {
+function kiErgebnisKarte(titel, text, quellen = [], kosten = null) {
   return el('div', { class: 'karte ki-rahmen' },
     el('h2', { text: titel }),
     el('div', { class: 'markdown', html: markdownZuHtml(text) }),
     quellen.length ? el('details', {}, el('summary', { text: `Quellen (${quellen.length})` }),
       el('ul', { class: 'quellen' }, quellen.map((q) => el('li', {}, el('a', { href: q.url, target: '_blank', rel: 'noopener noreferrer', text: q.titel || q.url }))))) : null,
-    el('p', { class: 'hinweis', text: 'KI-Ergebnisse können Fehler enthalten. Wichtige Angaben (Beträge, Fristen) bitte bei der offiziellen Stelle prüfen.' }));
+    el('p', { class: 'hinweis', text: 'KI-Ergebnisse können Fehler enthalten. Wichtige Angaben (Beträge, Fristen) bitte bei der offiziellen Stelle prüfen.' }),
+    kosten ? el('p', { class: 'kosten', text: kostenText(kosten) }) : null);
 }
 
 // ---------------------------------------------------------------- Navigation & Status
@@ -198,17 +279,19 @@ function zeigeBereich(id, fokus = true) {
 
 function statusAnzeigen() {
   const s = $('#status');
-  const ki = !server.kiVerfuegbar ? el('span', { class: 'badge', text: 'KI nicht eingerichtet' })
-    : zustand.einwilligung.ki ? el('span', { class: 'badge ki', text: 'KI-Modus an' }) : el('span', { class: 'badge', text: 'KI aus' });
+  const kiText = !server.kiVerfuegbar ? 'KI einrichten'
+    : zustand.einwilligung.ki ? `KI an${monatsKosten() ? ` · ${dollar(monatsKosten())} diesen Monat` : ''}` : 'KI aus';
+  const ki = el('button', { type: 'button', class: `badge badge-knopf ${server.kiVerfuegbar && zustand.einwilligung.ki ? 'ki' : ''}`, title: 'KI-Einstellungen', onclick: zuKiEinstellungen }, kiText);
   ersetzen(s, 
     el('span', { class: 'badge gruen', text: 'Lokale Verarbeitung' }),
     ki,
     el('span', { class: zustand.einwilligung.speichern ? 'badge' : 'badge warn', text: zustand.einwilligung.speichern ? 'Speichern an' : 'Nicht gespeichert' }),
   );
   $('#ki-status-hinweis').textContent = server.kiVerfuegbar
-    ? `KI ist auf diesem Rechner eingerichtet (Modell ${server.modell}).`
-    : 'Hinweis: Der KI-Modus ist auf diesem Rechner noch nicht eingerichtet (API-Schlüssel fehlt, siehe README). Alle anderen Funktionen laufen trotzdem.';
+    ? `KI ist eingerichtet (${server.ki?.modellName || server.modell}).`
+    : 'Für den KI-Modus muss zusätzlich oben unter „KI-Modus einrichten“ ein API-Schlüssel hinterlegt werden. Alle anderen Funktionen laufen auch ohne KI.';
   kiKnoepfeAktualisieren();
+  kiKarteRendern();
 }
 
 // ---------------------------------------------------------------- 1 Start / Einwilligung
@@ -229,9 +312,165 @@ $('#einwilligung-form').addEventListener('submit', (e) => {
   if (!zustand.einwilligung.steuer) zustand.steuer = {};
   speichern();
   statusAnzeigen();
+  if (zustand.einwilligung.ki && !server.kiVerfuegbar) {
+    meldung('Gespeichert. Damit die KI-Funktionen laufen, jetzt noch oben den KI-Modus einrichten.');
+    zuKiEinstellungen();
+    return;
+  }
   meldung('Einstellungen gespeichert.');
   zeigeBereich('unterlagen');
 });
+
+// ---------------------------------------------------------------- KI-Modus einrichten
+
+let kiFormularOffen = false;
+let kiTestMeldung = '';
+
+const KOSTEN_SCHAETZUNG = [
+  ['Dokument auswerten (1–2 Seiten)', '0,05–0,10 $'],
+  ['HR-Einschätzung', '0,08–0,15 $'],
+  ['Anschreiben schreiben', '0,05–0,08 $'],
+  ['Job-Websuche (bis 8 Suchen)', '0,20–0,40 $'],
+  ['Recherche Sozialleistungen (bis 10 Suchen)', '0,25–0,50 $'],
+];
+
+function kiInfoBloecke() {
+  return [
+    el('details', {},
+      el('summary', { text: 'Was kostet das?' }),
+      el('p', { class: 'hinweis', text: 'Abgerechnet wird nach Verbrauch direkt bei Anthropic (in US-Dollar). Richtwerte mit Claude Opus 5.5 – mit Sonnet 5.5 etwa die Hälfte. Die echten Kosten zeigt der Generator nach jeder Auswertung an.' }),
+      el('table', {}, el('tbody', {}, KOSTEN_SCHAETZUNG.map(([was, wie]) => el('tr', {}, el('td', { text: was }), el('td', { text: wie }))))),
+      el('p', { class: 'hinweis', text: 'Ein kompletter Durchlauf mit allen KI-Funktionen kostet grob 1–2 $. Websuchen kosten 1 Cent pro Suche plus die gelesenen Inhalte.' })),
+    el('details', {},
+      el('summary', { text: 'Datenschutz bei der KI' }),
+      el('ul', { class: 'liste-sauber liste-tipp' },
+        el('li', { text: 'Anthropic nutzt API-Daten nicht zum Training der Modelle.' }),
+        el('li', { text: 'Anfragen werden standardmäßig nach spätestens 30 Tagen gelöscht (Ausnahme: Verstöße gegen die Nutzungsrichtlinien).' }),
+        el('li', { text: 'Ein Auftragsverarbeitungsvertrag mit EU-Standardvertragsklauseln ist Teil der API-Bedingungen.' }),
+        el('li', { text: 'Eine reine EU-Verarbeitung bietet Anthropic nicht an – deshalb überträgt der Generator so wenig wie möglich: keine Kontaktdaten, Dokumente im Datensparmodus nur als geschwärzter Text.' }),
+        el('li', { text: 'Der Schlüssel bleibt auf diesem Rechner (Datei .env) und wird nie an den Browser zurückgegeben.' })),
+      el('p', { class: 'hinweis' }, 'Details: ', el('a', { href: 'https://platform.claude.com/docs/en/manage-claude/api-and-data-retention', target: '_blank', rel: 'noopener noreferrer', text: 'Anthropic – API und Datenaufbewahrung' }))),
+  ];
+}
+
+function modellAuswahl(name, gewaehlt) {
+  return el('fieldset', { class: 'modellwahl' },
+    el('legend', { text: 'Modell' }),
+    (server.modelle || []).map((m) => {
+      const input = el('input', { type: 'radio', name, value: m.id });
+      input.checked = m.id === (gewaehlt || 'claude-opus-5-5');
+      return el('label', { class: 'check' }, input, el('span', {},
+        el('strong', { text: m.name }), ` – ${m.beschreibung}`,
+        el('span', { class: 'feldhilfe', text: ` Eingabe ${m.eingabe} $ · Ausgabe ${m.ausgabe} $ je 1 Mio. Token` })));
+    }));
+}
+
+function kiEinrichtungsFormular() {
+  const form = el('form', { class: 'ki-formular', autocomplete: 'off' },
+    el('label', { for: 'ki-schluessel' }, 'API-Schlüssel',
+      el('input', { id: 'ki-schluessel', name: 'apiKey', type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: 'sk-ant-…', required: true })),
+    modellAuswahl('modell', server.ki?.modell),
+    el('div', { class: 'aktionen' },
+      el('button', { type: 'submit', class: 'knopf' }, 'Prüfen & speichern'),
+      server.kiVerfuegbar ? el('button', { type: 'button', class: 'knopf zweit', onclick: () => { kiFormularOffen = false; kiKarteRendern(); } }, 'Abbrechen') : null),
+    el('p', { class: 'hinweis', text: 'Die Prüfung ist kostenlos. Der Schlüssel wird nur auf diesem Rechner in der Datei .env gespeichert – ein Neustart ist nicht nötig.' }),
+    el('div', { class: 'ki-meldung', 'aria-live': 'polite' }));
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const knopf = form.querySelector('button[type=submit]');
+    mitLaden(knopf, form.querySelector('.ki-meldung'), async () => {
+      server = await api('/api/ki/einrichten', { apiKey: form.elements.apiKey.value.trim(), modell: form.elements.modell.value });
+      form.elements.apiKey.value = '';
+      kiFormularOffen = false;
+      kiTestMeldung = '';
+      statusAnzeigen();
+      meldung(zustand.einwilligung.ki
+        ? 'KI-Modus eingerichtet und bereit.'
+        : 'Schlüssel gespeichert. Zum Nutzen jetzt noch unten den Haken bei „KI-Modus“ setzen und speichern.');
+    });
+  });
+  return form;
+}
+
+function kiKarteRendern() {
+  const karte = $('#ki-karte');
+  if (!karte) return;
+  const k = server.ki || {};
+
+  if (!server.kiVerfuegbar || kiFormularOffen) {
+    ersetzen(karte,
+      el('h2', { text: server.kiVerfuegbar ? 'API-Schlüssel ändern' : 'KI-Modus einrichten (optional)' }),
+      server.kiVerfuegbar ? null : el('p', { class: 'hinweis', text: 'Ohne KI laufen alle anderen Funktionen. Mit KI werden auch Scans gelesen, das Profil tiefer bewertet, das Web nach Stellen und Leistungen durchsucht und Anschreiben geschrieben.' }),
+      server.kiVerfuegbar ? null : el('ol', { class: 'schritt-liste' },
+        el('li', {}, 'Bei Anthropic in der ', el('a', { href: 'https://platform.claude.com', target: '_blank', rel: 'noopener noreferrer', text: 'Claude Console' }), ' ein Konto anlegen.'),
+        el('li', {}, 'Unter ', el('strong', { text: 'Billing' }), ' Guthaben aufladen. Abgerechnet wird nach Verbrauch; ein Claude-Abo (Pro/Max) enthält kein API-Guthaben. Neue Konten bekommen meist ein kleines Startguthaben.'),
+        el('li', {}, 'Unter ', el('strong', { text: 'Settings → API Keys' }), ' einen Schlüssel erstellen und hier einfügen.'),
+        el('li', {}, 'Empfohlen: Unter ', el('strong', { text: 'Settings → Limits' }), ' ein monatliches Ausgabenlimit festlegen.')),
+      kiEinrichtungsFormular(),
+      kiInfoBloecke());
+    return;
+  }
+
+  const testErgebnis = el('div', { class: 'ki-meldung', 'aria-live': 'polite' });
+  const testKnopf = el('button', { type: 'button', class: 'knopf zweit', onclick: () => mitLaden(testKnopf, testErgebnis, async () => {
+    const r = await api('/api/ki/testen', {});
+    server = r.status;
+    kiTestMeldung = `Verbindung in Ordnung – Antwort nach ${(r.dauerMs / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })} s. ${kostenText(r.kosten)}`;
+    kostenBuchen(r.kosten); // zeichnet die Karte samt Meldung neu
+    kiKarteRendern();
+  }) }, 'Verbindung testen (< 1 Cent)');
+  if (kiTestMeldung) ersetzen(testErgebnis, el('p', { class: 'info', text: kiTestMeldung }));
+
+  const modellForm = el('form', { class: 'modell-wechsel' }, modellAuswahl('modellWechsel', k.modell),
+    el('button', { type: 'submit', class: 'knopf zweit klein' }, 'Modell übernehmen'));
+  modellForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const neu = modellForm.elements.modellWechsel.value;
+    if (neu === k.modell) return;
+    mitLaden(modellForm.querySelector('button'), testErgebnis, async () => {
+      server = await api('/api/ki/modell', { modell: neu });
+      statusAnzeigen();
+      meldung(`Modell gewechselt: ${server.ki.modellName}`);
+    });
+  });
+
+  const datensparsam = el('input', { type: 'checkbox', id: 'ki-datensparsam' });
+  datensparsam.checked = zustand.kiEinstellungen?.datensparsam !== false;
+  datensparsam.addEventListener('change', () => { zustand.kiEinstellungen.datensparsam = datensparsam.checked; speichern(); });
+  const budget = el('input', { type: 'number', id: 'ki-budget', min: '0', step: '0.5', inputmode: 'decimal', placeholder: 'z. B. 5' });
+  budget.value = zustand.kiEinstellungen?.budget ?? '';
+  budget.addEventListener('input', () => { zustand.kiEinstellungen.budget = budget.value; speichern(); });
+
+  ersetzen(karte,
+    el('div', { class: 'zeile-kopf' }, el('h2', { text: 'KI-Modus' }), el('span', { class: 'badge gruen', text: 'eingerichtet' })),
+    el('dl', { class: 'ki-daten' },
+      el('dt', { text: 'Modell' }), el('dd', { text: k.modellName }),
+      el('dt', { text: 'Schlüssel' }), el('dd', { text: `${k.schluessel}${k.quelle === 'umgebung' ? ' (aus Windows-Umgebungsvariable)' : ' (in .env gespeichert)'}` }),
+      el('dt', { text: 'Websuche' }), el('dd', { text: k.websuche === true ? 'verfügbar' : k.websuche === false ? 'für dieses Modell nicht verfügbar' : 'noch nicht geprüft – „Verbindung testen“' }),
+      el('dt', { text: 'Diesen Monat' }), el('dd', { text: `${dollar(monatsKosten())} (Schätzung aus den Verbrauchsdaten)` }),
+      el('dt', { text: 'Einwilligung' }), el('dd', { text: zustand.einwilligung.ki ? 'erteilt' : 'fehlt noch – unten Haken bei „KI-Modus“ setzen' })),
+    el('div', { class: 'aktionen' }, testKnopf,
+      el('button', { type: 'button', class: 'knopf zweit', onclick: () => { kiFormularOffen = true; kiKarteRendern(); $('#ki-schluessel')?.focus(); } }, 'Schlüssel ändern'),
+      el('button', { type: 'button', class: 'knopf zweit', onclick: (e) => {
+        if (!window.confirm('API-Schlüssel von diesem Rechner entfernen? Die KI-Funktionen sind danach aus.')) return;
+        mitLaden(e.currentTarget, testErgebnis, async () => {
+          const r = await api('/api/ki/entfernen', {});
+          server = r;
+          kiTestMeldung = '';
+          statusAnzeigen();
+          meldung(r.hinweis || 'Schlüssel entfernt.');
+        });
+      } }, 'Schlüssel entfernen')),
+    testErgebnis,
+    el('details', {}, el('summary', { text: 'Modell wechseln' }), modellForm),
+    el('div', { class: 'feldraster ki-optionen' },
+      el('label', { class: 'check breit', for: 'ki-datensparsam' }, datensparsam, el('span', {},
+        el('strong', { text: 'Datensparmodus (empfohlen): ' }),
+        'Dokumente mit Textebene werden nur als Text übertragen, Name, Anschrift, Telefon, E-Mail, Geburtsdatum und IBAN vorher geschwärzt. Scans und Fotos nur nach Rückfrage.')),
+      el('label', { for: 'ki-budget' }, 'Monatsbudget-Warnung (US-Dollar, optional)', budget,
+        el('span', { class: 'feldhilfe', text: 'Vor jeder KI-Auswertung über diesem Betrag fragt der Generator nach. Eine harte Grenze setzt du in der Claude Console unter „Limits“.' }))),
+    kiInfoBloecke());
+}
 
 // ---------------------------------------------------------------- 2 Unterlagen
 
@@ -343,7 +582,11 @@ function kiDokumentBlock(dok) {
     k.auffaelligkeiten?.length ? el('div', {}, el('strong', { text: 'Was Personaler bemerken würden:' }), el('ul', { class: 'liste-sauber liste-tipp' }, k.auffaelligkeiten.map((t) => el('li', { text: t })))) : null,
     el('div', { class: 'aktionen' },
       (k.stationen?.length || k.bildung?.length || k.software?.length) ? el('button', { type: 'button', class: 'knopf zweit klein', onclick: () => kiUebernehmen(dok) }, 'Ergebnisse ins Profil übernehmen') : null,
-      k.rueckfragen?.length ? el('button', { type: 'button', class: 'knopf zweit klein', onclick: () => zusatzfragenHinzufuegen(k.rueckfragen.map((f) => ({ frage: f, warum: `Aus „${dok.name}“` }))) }, `${k.rueckfragen.length} Rückfragen ins Interview`) : null));
+      k.rueckfragen?.length ? el('button', { type: 'button', class: 'knopf zweit klein', onclick: () => zusatzfragenHinzufuegen(k.rueckfragen.map((f) => ({ frage: f, warum: `Aus „${dok.name}“` }))) }, `${k.rueckfragen.length} Rückfragen ins Interview`) : null),
+    k.uebertragen || k.kosten ? el('p', { class: 'kosten', text: [
+      k.uebertragen ? `Übertragen: ${k.uebertragen.art}${k.uebertragen.zeichen ? `, ${k.uebertragen.zeichen.toLocaleString('de-DE')} Zeichen` : ''}${k.uebertragen.geschwaerzt ? `, ${k.uebertragen.geschwaerzt} Angaben geschwärzt` : ''}` : '',
+      kostenText(k.kosten),
+    ].filter(Boolean).join(' · ') }) : null);
 }
 
 const ARTNAMEN = { lebenslauf: 'Lebenslauf', arbeitszeugnis: 'Arbeitszeugnis', schulzeugnis: 'Schulzeugnis', hochschulzeugnis: 'Hochschulzeugnis', ausbildungszeugnis: 'Ausbildung', zertifikat: 'Zertifikat', sonstiges: 'Sonstiges' };
@@ -361,8 +604,20 @@ function dokumenteRendern() {
     const kiZiel = el('div');
     kiKnopf.addEventListener('click', () => mitLaden(kiKnopf, kiZiel, async () => {
       const daten = dateien.get(dok.id);
-      if (!daten && !dok.text) throw new Error('Die Originaldatei ist nach dem Neuladen nicht mehr im Speicher. Bitte erneut hochladen.');
-      dok.ki = await api('/api/ki/dokument', { name: dok.name, mime: dok.mime, daten, text: daten ? undefined : dok.text }, { ki: true });
+      const datensparsam = zustand.kiEinstellungen?.datensparsam !== false;
+      const hatText = !dok.gescannt && String(dok.text || '').trim().length > 40;
+      if (!hatText && !daten) throw new Error('Die Originaldatei ist nach dem Neuladen nicht mehr im Speicher. Bitte erneut hochladen.');
+      // Vollständige Datei verlässt den Rechner → vorher ausdrücklich fragen.
+      if (!hatText || !datensparsam) {
+        const grund = !hatText
+          ? 'Dieses Dokument ist ein Scan oder Foto ohne lesbaren Text. Für die KI-Auswertung wird die vollständige Datei – inklusive Name, Anschrift und anderer persönlicher Angaben – an die Claude API (Anthropic, USA) übertragen.'
+          : 'Der Datensparmodus ist ausgeschaltet. Die vollständige Datei wird an die Claude API (Anthropic, USA) übertragen.';
+        if (!window.confirm(`${grund}\n\nFortfahren?`)) return;
+      }
+      const body = { name: dok.name, mime: dok.mime, datensparsam, namen: [zustand.profil.persoenlich?.vorname, zustand.profil.persoenlich?.nachname].filter(Boolean) };
+      if (hatText && (datensparsam || !daten)) body.text = dok.text;
+      else body.daten = daten;
+      dok.ki = await kiAufruf('/api/ki/dokument', body);
       speichern();
       dokumenteRendern();
     }));
@@ -640,7 +895,8 @@ function hrKiRendern() {
       el('p', {}, el('strong', { text: `${r.rueckfragen.length} Rückfragen für ein noch genaueres Bild` })),
       el('ul', {}, r.rueckfragen.map((f) => el('li', { text: f.frage }))),
       el('button', { type: 'button', class: 'knopf klein', onclick: () => { zusatzfragenHinzufuegen(r.rueckfragen); zeigeBereich('interview'); } }, 'Im Interview beantworten')) : null,
-    el('p', { class: 'hinweis', text: 'KI-Einschätzung – kann irren. Gehaltsangaben sind grobe Schätzungen.' })));
+    el('p', { class: 'hinweis', text: 'KI-Einschätzung – kann irren. Gehaltsangaben sind grobe Schätzungen.' }),
+    r.kosten ? el('p', { class: 'kosten', text: kostenText(r.kosten) }) : null));
 }
 
 $('#hr-start').addEventListener('click', (e) => mitLaden(e.currentTarget, $('#hr-ergebnis'), async () => {
@@ -653,11 +909,11 @@ $('#hr-ki').addEventListener('click', (e) => mitLaden(e.currentTarget, $('#hr-ki
   const lokal = zustand.ergebnisse.hr || await api('/api/hr', { profil: zustand.profil, dokumente: dokumenteFuerAnalyse() });
   zustand.ergebnisse.hr = lokal;
   hrRendern();
-  zustand.ergebnisse.hrKi = await api('/api/ki/hr', {
+  zustand.ergebnisse.hrKi = await kiAufruf('/api/ki/hr', {
     profil: zustand.profil,
     lokaleAnalyse: { ...lokal, fehlendeAngaben: undefined },
     dokumentZusammenfassungen: zustand.dokumente.map((d) => ({ art: d.analyse?.art?.name, zusammenfassung: d.ki?.zusammenfassung || '', zeugnisnote: d.analyse?.arbeitszeugnis?.gesamtnote ?? null })),
-  }, { ki: true });
+  });
   speichern();
   hrKiRendern();
 }));
@@ -675,7 +931,7 @@ function jobVorschlaege() {
   const vorschlaege = [...new Set([...positionen, ...(zustand.ergebnisse.hrKi?.passendeRollen || []).map((r) => r.suchbegriff || r.titel)])].slice(0, 10);
   ersetzen($('#job-vorschlaege'), ...vorschlaege.map((v) => el('button', { type: 'button', class: 'chip', onclick: () => { f.elements.was.value = v; f.requestSubmit(); } }, v)));
   if (zustand.ergebnisse.jobs) jobsRendern(zustand.ergebnisse.jobs);
-  if (zustand.ergebnisse.jobsKi) ersetzen($('#job-ki-ergebnis'), kiErgebnisKarte('Weitere Stellen aus dem Web', zustand.ergebnisse.jobsKi.text, zustand.ergebnisse.jobsKi.quellen));
+  if (zustand.ergebnisse.jobsKi) ersetzen($('#job-ki-ergebnis'), kiErgebnisKarte('Weitere Stellen aus dem Web', zustand.ergebnisse.jobsKi.text, zustand.ergebnisse.jobsKi.quellen, zustand.ergebnisse.jobsKi.kosten));
 }
 
 function jobParameter() {
@@ -730,9 +986,9 @@ $('#jobs-ki').addEventListener('click', (e) => mitLaden(e.currentTarget, $('#job
     String(zustand.profil.kompetenzen?.fachlich || '').slice(0, 300),
     zustand.profil.wunsch?.homeoffice ? `Homeoffice: ${zustand.profil.wunsch.homeoffice}` : '',
   ].filter(Boolean).join(' | ');
-  zustand.ergebnisse.jobsKi = await api('/api/ki/jobs', { was: p.was, wo: p.wo, profilKurz }, { ki: true });
+  zustand.ergebnisse.jobsKi = await kiAufruf('/api/ki/jobs', { was: p.was, wo: p.wo, profilKurz });
   speichern();
-  ersetzen($('#job-ki-ergebnis'), kiErgebnisKarte('Weitere Stellen aus dem Web', zustand.ergebnisse.jobsKi.text, zustand.ergebnisse.jobsKi.quellen));
+  ersetzen($('#job-ki-ergebnis'), kiErgebnisKarte('Weitere Stellen aus dem Web', zustand.ergebnisse.jobsKi.text, zustand.ergebnisse.jobsKi.quellen, zustand.ergebnisse.jobsKi.kosten));
 }));
 
 function anschreibenVorbereiten(job) {
@@ -787,9 +1043,9 @@ $('#leistungen-ki').addEventListener('click', (e) => mitLaden(e.currentTarget, $
   const lokal = zustand.ergebnisse.leistungen || await api('/api/leistungen', { situation: zustand.situation });
   zustand.ergebnisse.leistungen = lokal;
   leistungenRendern();
-  zustand.ergebnisse.leistungenKi = await api('/api/ki/leistungen', { situation: zustand.situation, lokaleErgebnisse: lokal.ergebnisse.map((l) => ({ name: l.name })) }, { ki: true });
+  zustand.ergebnisse.leistungenKi = await kiAufruf('/api/ki/leistungen', { situation: zustand.situation, lokaleErgebnisse: lokal.ergebnisse.map((l) => ({ name: l.name })) });
   speichern();
-  ersetzen($('#leistungen-ki-ergebnis'), kiErgebnisKarte('Recherche: Leistungen, Beträge & Erfahrungen', zustand.ergebnisse.leistungenKi.text, zustand.ergebnisse.leistungenKi.quellen));
+  ersetzen($('#leistungen-ki-ergebnis'), kiErgebnisKarte('Recherche: Leistungen, Beträge & Erfahrungen', zustand.ergebnisse.leistungenKi.text, zustand.ergebnisse.leistungenKi.quellen, zustand.ergebnisse.leistungenKi.kosten));
 }));
 
 // ---------------------------------------------------------------- 7 Steuer
@@ -802,7 +1058,7 @@ function steuerAnzeigen() {
   if (frei) {
     rasterRendern($('#steuer-felder'), STEUER, zustand.steuer);
     steuerRendern();
-    if (zustand.ergebnisse.steuerKi) ersetzen($('#steuer-ki-ergebnis'), kiErgebnisKarte('Steuer-Check mit aktuellen Werten', zustand.ergebnisse.steuerKi.text, zustand.ergebnisse.steuerKi.quellen));
+    if (zustand.ergebnisse.steuerKi) ersetzen($('#steuer-ki-ergebnis'), kiErgebnisKarte('Steuer-Check mit aktuellen Werten', zustand.ergebnisse.steuerKi.text, zustand.ergebnisse.steuerKi.quellen, zustand.ergebnisse.steuerKi.kosten));
   }
 }
 
@@ -842,9 +1098,9 @@ $('#steuer-ki').addEventListener('click', (e) => mitLaden(e.currentTarget, $('#s
   const lokal = zustand.ergebnisse.steuer || await api('/api/steuer', { einwilligung: zustand.einwilligung.steuer, steuer: zustand.steuer, situation: zustand.situation });
   zustand.ergebnisse.steuer = lokal;
   steuerRendern();
-  zustand.ergebnisse.steuerKi = await api('/api/ki/steuer', { einwilligung: zustand.einwilligung.steuer, steuer: zustand.steuer, situation: { erwerbsstatus: zustand.situation.erwerbsstatus, anzahlKinder: zustand.situation.anzahlKinder }, lokaleTipps: lokal.tipps.map((t) => ({ titel: t.titel })) }, { ki: true });
+  zustand.ergebnisse.steuerKi = await kiAufruf('/api/ki/steuer', { einwilligung: zustand.einwilligung.steuer, steuer: zustand.steuer, situation: { erwerbsstatus: zustand.situation.erwerbsstatus, anzahlKinder: zustand.situation.anzahlKinder }, lokaleTipps: lokal.tipps.map((t) => ({ titel: t.titel })) });
   speichern();
-  ersetzen($('#steuer-ki-ergebnis'), kiErgebnisKarte('Steuer-Check mit aktuellen Werten', zustand.ergebnisse.steuerKi.text, zustand.ergebnisse.steuerKi.quellen));
+  ersetzen($('#steuer-ki-ergebnis'), kiErgebnisKarte('Steuer-Check mit aktuellen Werten', zustand.ergebnisse.steuerKi.text, zustand.ergebnisse.steuerKi.quellen, zustand.ergebnisse.steuerKi.kosten));
 }));
 
 // ---------------------------------------------------------------- 8 Anschreiben & Lebenslauf
@@ -868,6 +1124,7 @@ function anschreibenRendern() {
     el('label', { for: 'as-betreff' }, 'Betreff', betreff),
     el('label', { for: 'as-text' }, 'Text (bearbeitbar)', text),
     r.hinweise?.length ? el('ul', { class: 'liste-sauber liste-tipp' }, r.hinweise.map((h) => el('li', { text: h }))) : null,
+    r.kosten ? el('p', { class: 'kosten', text: kostenText(r.kosten) }) : null,
     el('div', { class: 'aktionen' },
       el('button', { type: 'button', class: 'knopf zweit', onclick: async () => {
         try {
@@ -893,7 +1150,7 @@ $('#anschreiben-form').addEventListener('submit', (e) => {
 
 $('#anschreiben-ki').addEventListener('click', (e) => mitLaden(e.currentTarget, $('#anschreiben-ergebnis'), async () => {
   const f = $('#anschreiben-form').elements;
-  const r = await api('/api/ki/anschreiben', { profil: zustand.profil, stellenanzeige: f.stellenanzeige.value, hinweise: f.hinweise.value }, { ki: true });
+  const r = await kiAufruf('/api/ki/anschreiben', { profil: zustand.profil, stellenanzeige: f.stellenanzeige.value, hinweise: f.hinweise.value });
   // Der Name wurde nicht an die KI geschickt – hier lokal einsetzen.
   r.anschreiben = String(r.anschreiben || '').replaceAll('[Name]', name() || '[Name]');
   zustand.ergebnisse.anschreiben = { ...r, quelle: 'ki' };
@@ -964,6 +1221,8 @@ function datenuebersicht() {
     el('li', { text: `Im Browser gespeichert: ${e.speichern ? 'ja (localStorage dieses Browsers)' : 'nein – nach dem Neuladen ist alles weg'}` }),
     el('li', { text: `Dokumente: ${zustand.dokumente.length} (gespeichert wird nur der ausgelesene Text und die Auswertung, nicht die Originaldatei)` }),
     el('li', { text: `KI-Modus: ${e.ki ? 'eingewilligt – Daten gehen nur bei Klick auf einen KI-Knopf an die Claude API (Anthropic)' : 'aus – nichts verlässt diesen Rechner (außer Suchanfragen an die Jobbörse)'}` }),
+    el('li', { text: `Datensparmodus für Dokumente: ${zustand.kiEinstellungen?.datensparsam !== false ? 'an – nur geschwärzter Text wird übertragen, Scans nur nach Rückfrage' : 'aus'}` }),
+    el('li', { text: `KI-Kosten: ${Object.entries(zustand.kiKosten || {}).sort().reverse().map(([m, v]) => `${m}: ${dollar(v)}`).join(' · ') || 'noch keine'}` }),
     el('li', { text: `Steuerangaben: ${e.steuer ? 'freigegeben' : 'nicht freigegeben'}` }),
     el('li', { text: 'Jobsuche: Suchbegriff und Ort werden an die Jobbörse der Bundesagentur für Arbeit gesendet.' }));
 }
@@ -1014,7 +1273,7 @@ function allesRendern() {
   hrRendern();
   hrKiRendern();
   leistungenRendern();
-  if (zustand.ergebnisse.leistungenKi) ersetzen($('#leistungen-ki-ergebnis'), kiErgebnisKarte('Recherche: Leistungen, Beträge & Erfahrungen', zustand.ergebnisse.leistungenKi.text, zustand.ergebnisse.leistungenKi.quellen));
+  if (zustand.ergebnisse.leistungenKi) ersetzen($('#leistungen-ki-ergebnis'), kiErgebnisKarte('Recherche: Leistungen, Beträge & Erfahrungen', zustand.ergebnisse.leistungenKi.text, zustand.ergebnisse.leistungenKi.quellen, zustand.ergebnisse.leistungenKi.kosten));
   else ersetzen($('#leistungen-ki-ergebnis'));
   ersetzen($('#job-ergebnis'));
   ersetzen($('#job-ki-ergebnis'));

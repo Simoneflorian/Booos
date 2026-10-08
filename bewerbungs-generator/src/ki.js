@@ -1,26 +1,40 @@
 // Optionale KI-Funktionen über die Claude API (Anthropic).
-// Wird nur genutzt, wenn ANTHROPIC_API_KEY gesetzt ist UND der Nutzer im Browser den KI-Modus erlaubt hat.
+// Wird nur genutzt, wenn ein API-Schlüssel eingerichtet ist UND der Nutzer im Browser den KI-Modus erlaubt hat.
 // Es werden nur die Daten gesendet, die für die jeweilige Aufgabe nötig sind.
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from './config.js';
+import { kostenBerechnen, usageAddieren, MODELLE } from './einstellungen.js';
+import { schwaerzen } from './datenschutz.js';
 
 export class KiFehler extends Error {
-  constructor(message, status = 502) {
+  constructor(message, status = 502, code = 'ki') {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
 let client = null;
+let clientFabrik = (apiKey) => new Anthropic({ apiKey });
+
 // Für Tests austauschbar.
 export function setKiClient(neu) {
   client = neu;
 }
+export function setClientFabrik(fabrik) {
+  clientFabrik = fabrik;
+  client = null;
+}
+
+// Nach dem Einrichten oder Entfernen des Schlüssels: beim nächsten Aufruf neuen Client erzeugen.
+export function kiNeuLaden() {
+  client = null;
+}
 
 function holeClient() {
   if (client) return client;
-  if (!config.kiAktiv) throw new KiFehler('Der KI-Modus ist nicht eingerichtet: In der Datei .env fehlt ANTHROPIC_API_KEY (siehe README).', 503);
-  client = new Anthropic();
+  if (!config.kiAktiv) throw new KiFehler('Der KI-Modus ist noch nicht eingerichtet. Unter „Start“ → „KI-Modus einrichten“ den API-Schlüssel eintragen.', 503, 'nicht-eingerichtet');
+  client = clientFabrik(config.apiKey);
   return client;
 }
 
@@ -36,6 +50,7 @@ Grundsätze:
 async function anfrage({ system, content, effort = 'medium', tools, format, maxTokens = 16000 }) {
   const messages = [{ role: 'user', content }];
   let antwort;
+  let usage = {};
   try {
     for (let runde = 0; runde < 6; runde++) {
       antwort = await holeClient().beta.messages.create({
@@ -47,6 +62,7 @@ async function anfrage({ system, content, effort = 'medium', tools, format, maxT
         ...(tools ? { tools } : {}),
         ...(MIT_FALLBACK.test(config.kiModell) ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' } : {}),
       });
+      usage = usageAddieren(usage, antwort.usage);
       // Lange Websuchen werden vom Server pausiert – Verlauf zurückgeben und fortsetzen.
       if (antwort.stop_reason !== 'pause_turn') break;
       messages.push({ role: 'assistant', content: antwort.content });
@@ -55,20 +71,67 @@ async function anfrage({ system, content, effort = 'medium', tools, format, maxT
     throw fehlerUebersetzen(e);
   }
   if (antwort.stop_reason === 'refusal') {
-    throw new KiFehler('Die KI hat diese Anfrage aus Sicherheitsgründen nicht beantwortet. Bitte die Eingaben umformulieren.', 422);
+    throw new KiFehler('Die KI hat diese Anfrage aus Sicherheitsgründen nicht beantwortet. Bitte die Eingaben umformulieren.', 422, 'abgelehnt');
   }
+  antwort.kosten = kostenBerechnen(usage, config.kiModell);
   return antwort;
 }
 
-function fehlerUebersetzen(e) {
+export function fehlerUebersetzen(e, modell = config.kiModell) {
   if (e instanceof KiFehler) return e;
-  if (e instanceof Anthropic.AuthenticationError) return new KiFehler('Der API-Schlüssel wurde abgelehnt. Bitte ANTHROPIC_API_KEY in der .env prüfen.', 401);
-  if (e instanceof Anthropic.PermissionDeniedError) return new KiFehler('Der API-Schlüssel hat keine Berechtigung für dieses Modell oder diese Funktion.', 403);
-  if (e instanceof Anthropic.RateLimitError) return new KiFehler('Zu viele KI-Anfragen in kurzer Zeit. Bitte eine Minute warten.', 429);
-  if (e instanceof Anthropic.BadRequestError) return new KiFehler(`Die KI-Anfrage war ungültig: ${e.message}`, 400);
-  if (e instanceof Anthropic.APIConnectionError) return new KiFehler('Keine Verbindung zur KI. Internetverbindung prüfen.', 503);
-  if (e instanceof Anthropic.APIError) return new KiFehler(`Fehler der KI-Schnittstelle (${e.status ?? 'unbekannt'}). Bitte später erneut versuchen.`, 502);
-  return new KiFehler(`Unerwarteter Fehler bei der KI-Anfrage: ${e.message}`, 500);
+  const text = String(e?.message || '');
+  if (e instanceof Anthropic.AuthenticationError) return new KiFehler('Der API-Schlüssel wurde abgelehnt (ungültig oder gelöscht). Bitte unter „Start“ einen gültigen Schlüssel eintragen.', 401, 'schluessel');
+  if (e instanceof Anthropic.PermissionDeniedError) return new KiFehler('Der API-Schlüssel hat keine Berechtigung für dieses Modell oder diese Funktion.', 403, 'berechtigung');
+  if (e instanceof Anthropic.NotFoundError) return new KiFehler(`Das Modell „${modell}“ ist für diesen Schlüssel nicht verfügbar. Bitte unter „Start“ ein anderes Modell wählen.`, 404, 'modell');
+  if (e instanceof Anthropic.RateLimitError) return new KiFehler('Zu viele KI-Anfragen in kurzer Zeit. Bitte eine Minute warten.', 429, 'limit');
+  if (e instanceof Anthropic.BadRequestError) {
+    if (/credit balance/i.test(text)) return new KiFehler('Auf dem Anthropic-Konto ist kein Guthaben mehr. In der Claude Console unter „Billing“ Guthaben aufladen.', 402, 'guthaben');
+    if (/web.?search/i.test(text) && /not enabled|disabled/i.test(text)) return new KiFehler('Die Websuche ist für dein Anthropic-Konto deaktiviert. In der Claude Console unter „Settings → Capabilities“ einschalten.', 403, 'websuche-aus');
+    return new KiFehler(`Die KI-Anfrage war ungültig: ${text}`, 400, 'anfrage');
+  }
+  if (e instanceof Anthropic.APIConnectionTimeoutError) return new KiFehler('Die KI hat zu lange gebraucht. Bitte erneut versuchen.', 504, 'zeit');
+  if (e instanceof Anthropic.APIConnectionError) return new KiFehler('Keine Verbindung zur KI. Internetverbindung prüfen.', 503, 'verbindung');
+  if (e instanceof Anthropic.APIError && e.status === 529) return new KiFehler('Die KI von Anthropic ist gerade überlastet. Bitte in ein paar Minuten erneut versuchen.', 503, 'ueberlastet');
+  if (e instanceof Anthropic.APIError) return new KiFehler(`Fehler der KI-Schnittstelle (${e.status ?? 'unbekannt'}). Bitte später erneut versuchen.`, 502, 'server');
+  return new KiFehler(`Unerwarteter Fehler bei der KI-Anfrage: ${text}`, 500, 'unbekannt');
+}
+
+// Prüft Schlüssel + Modell kostenlos über die Models-Schnittstelle (keine Token-Kosten).
+export async function schluesselPruefen(apiKey, modell) {
+  try {
+    const info = await clientFabrik(apiKey).models.retrieve(modell);
+    return {
+      modell: info.id,
+      name: info.display_name || MODELLE[modell]?.name || modell,
+      websuche: info.capabilities?.server_tools?.web_search?.supported ?? null,
+      pdf: info.capabilities?.pdf_input?.supported ?? null,
+      geprueft: new Date().toISOString(),
+    };
+  } catch (e) {
+    throw fehlerUebersetzen(e, modell);
+  }
+}
+
+// Mini-Anfrage (unter 1 Cent): prüft zusätzlich Guthaben und Erreichbarkeit des Modells.
+export async function verbindungTesten() {
+  const start = Date.now();
+  let antwort;
+  try {
+    antwort = await holeClient().messages.create({
+      model: config.kiModell,
+      max_tokens: 256,
+      output_config: { effort: 'low' },
+      messages: [{ role: 'user', content: 'Antworte nur mit dem Wort OK.' }],
+    });
+  } catch (e) {
+    throw fehlerUebersetzen(e);
+  }
+  return {
+    ok: true,
+    antwort: textAus(antwort).slice(0, 40),
+    dauerMs: Date.now() - start,
+    kosten: kostenBerechnen(antwort.usage, config.kiModell),
+  };
 }
 
 function textAus(antwort) {
@@ -148,20 +211,30 @@ const ANSCHREIBEN_SCHEMA = obj({ betreff: S, anschreiben: S, hinweise: arr(S) })
 
 // --- Aufgaben ---
 
-export async function dokumentAuswerten({ name, mime, base64, text }) {
+// datensparsam: Hat das Dokument eine Textebene, wird nur der Text gesendet – mit geschwärzten persönlichen Angaben.
+// Scans/Fotos haben keinen Text und müssen als Bild gesendet werden (die Oberfläche fragt vorher nach).
+export async function dokumentAuswerten({ name, mime, base64, text, datensparsam = true, namen = [] }) {
   const inhalt = [];
-  if (mime === 'application/pdf' && base64) {
+  let uebertragen;
+  if (datensparsam && text && text.trim().length > 40) {
+    const g = schwaerzen(text, { namen });
+    inhalt.push({ type: 'text', text: `Inhalt der Datei (persönliche Angaben wurden datenschutzhalber geschwärzt):\n\n${g.text}` });
+    uebertragen = { art: 'Text (geschwärzt)', zeichen: g.text.length, geschwaerzt: g.anzahl, details: g.arten };
+  } else if (mime === 'application/pdf' && base64) {
     inhalt.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } });
+    uebertragen = { art: 'PDF-Datei (vollständig)', bytes: Math.round((base64.length * 3) / 4) };
   } else if (mime?.startsWith('image/') && base64) {
     inhalt.push({ type: 'image', source: { type: 'base64', media_type: mime, data: base64 } });
+    uebertragen = { art: 'Bild (vollständig)', bytes: Math.round((base64.length * 3) / 4) };
   } else if (text) {
-    inhalt.push({ type: 'text', text: `Inhalt der Datei „${name}“:\n\n${text}` });
+    inhalt.push({ type: 'text', text: `Inhalt der Datei:\n\n${text}` });
+    uebertragen = { art: 'Text (ungeschwärzt)', zeichen: text.length, geschwaerzt: 0 };
   } else {
-    throw new KiFehler('Für dieses Dokument liegt kein lesbarer Inhalt vor.', 400);
+    throw new KiFehler('Für dieses Dokument liegt kein lesbarer Inhalt vor. Bitte die Datei erneut hochladen.', 400, 'kein-inhalt');
   }
   inhalt.push({
     type: 'text',
-    text: `Werte diese Bewerbungsunterlage („${name}“) aus und fülle das Schema.
+    text: `Werte diese Bewerbungsunterlage aus und fülle das Schema. Platzhalter wie [Name] oder [Anschrift] sind Schwärzungen – nicht kommentieren.
 - Datumsangaben als JJJJ-MM (unbekannter Monat: nur JJJJ; laufend: leerer String bei „bis“).
 - Bei Arbeitszeugnissen: Leistungs- und Verhaltensnote nach deutscher Zeugnissprache (1 = sehr gut … 6), versteckte Botschaften („Geheimcodes“), Schlussformel. Sonst null bzw. leer.
 - Bei Schul-/Hochschul-/Ausbildungszeugnissen: Fächer und Noten.
@@ -175,7 +248,7 @@ Gib keine Angaben zu geschützten Merkmalen (Alter, Herkunft, Religion, Familien
     effort: 'medium',
     format: DOKUMENT_SCHEMA,
   });
-  return jsonAus(antwort);
+  return { ...jsonAus(antwort), kosten: antwort.kosten, uebertragen };
 }
 
 export async function hrEinschaetzung({ profil, lokaleAnalyse, dokumentZusammenfassungen = [] }) {
@@ -195,7 +268,7 @@ Bleibe bei den vorliegenden Daten. Keine Bewertung geschützter Merkmale.`,
     effort: 'high',
     format: HR_SCHEMA,
   });
-  return jsonAus(antwort);
+  return { ...jsonAus(antwort), kosten: antwort.kosten };
 }
 
 export async function jobsWebsuche({ was, wo, profilKurz }) {
@@ -212,7 +285,7 @@ Nenne nur Stellen und Links, die du in den Suchergebnissen tatsächlich gefunden
     effort: 'medium',
     tools: websuche(8, wo),
   });
-  return { text: textAus(antwort), quellen: quellenAus(antwort) };
+  return { text: textAus(antwort), quellen: quellenAus(antwort), kosten: antwort.kosten };
 }
 
 export async function leistungenRecherche({ situation, lokaleErgebnisse }) {
@@ -234,7 +307,7 @@ Schließe mit den 3 wichtigsten nächsten Schritten und dem Hinweis auf kostenlo
     effort: 'medium',
     tools: websuche(10),
   });
-  return { text: textAus(antwort), quellen: quellenAus(antwort) };
+  return { text: textAus(antwort), quellen: quellenAus(antwort), kosten: antwort.kosten };
 }
 
 export async function steuerRecherche({ steuer, situation, lokaleTipps }) {
@@ -248,7 +321,7 @@ Markdown, kurze Abschnitte, jeweils mit „Was tun?“. Nenne Beträge nur, wenn
     effort: 'medium',
     tools: websuche(6),
   });
-  return { text: textAus(antwort), quellen: quellenAus(antwort) };
+  return { text: textAus(antwort), quellen: quellenAus(antwort), kosten: antwort.kosten };
 }
 
 export async function anschreibenErstellen({ profil, stellenanzeige, hinweise }) {
@@ -266,5 +339,5 @@ In „hinweise“: was die Person noch prüfen/ergänzen sollte (z. B. Ansprechp
     effort: 'high',
     format: ANSCHREIBEN_SCHEMA,
   });
-  return jsonAus(antwort);
+  return { ...jsonAus(antwort), kosten: antwort.kosten };
 }

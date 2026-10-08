@@ -77,20 +77,38 @@ Ohne KI funktionieren alle Bereiche. Mit KI kommen dazu:
 - Recherche zu Sozialleistungen und Steuern mit Quellenangaben
 - fertig formulierte Anschreiben
 
-So richtest du ihn ein:
+**Einrichtung direkt in der App – ohne Eingabeaufforderung:**
 
-1. Auf https://console.anthropic.com ein Konto anlegen und unter „API Keys“ einen Schlüssel erstellen. Die Nutzung kostet Geld pro Anfrage, Websuchen werden zusätzlich berechnet. Die aktuellen Preise stehen in der Console.
-2. Im Ordner `bewerbungs-generator` die Vorlage kopieren und öffnen:
-   ```
-   copy .env.example .env
-   ```
-   ```
-   notepad .env
-   ```
-3. Hinter `ANTHROPIC_API_KEY=` den Schlüssel einfügen, speichern und den Server neu starten (Strg + C, dann `npm start`).
-4. Im Browser unter „Start“ den Haken bei **KI-Modus** setzen.
+1. In der [Claude Console](https://platform.claude.com) ein Konto anlegen.
+2. Unter **Billing** Guthaben aufladen. Abgerechnet wird nach Verbrauch. Ein Claude-Abo (Pro/Max) enthält **kein** API-Guthaben.
+3. Unter **Settings → API Keys** einen Schlüssel erstellen und kopieren.
+4. Im Generator unter **Start → „KI-Modus einrichten“** den Schlüssel einfügen, ein Modell wählen und auf **„Prüfen & speichern“** klicken. Die Prüfung ist kostenlos, ein Neustart ist nicht nötig.
+5. Unten bei den Einwilligungen den Haken **„KI-Modus“** setzen und speichern.
+6. Empfohlen: In der Console unter **Settings → Limits** ein monatliches Ausgabenlimit festlegen.
 
-Verwendet wird standardmäßig das Modell `claude-opus-5-5`. In `.env` lässt es sich mit `KI_MODELL=…` ändern. Die `.env`-Datei wird nicht ins Git-Repository übernommen.
+Der Schlüssel wird nur auf deinem Rechner in der Datei `.env` gespeichert. Er wird nie an den Browser zurückgegeben und nicht ins Git-Repository übernommen. Über „Verbindung testen“ (kostet unter 1 Cent) prüfst du auch das Guthaben. Mit „Schlüssel entfernen“ löschst du ihn wieder.
+
+**Kosten:** Nach jeder KI-Auswertung zeigt der Generator die tatsächlichen Kosten an, berechnet aus den Verbrauchsdaten der API. Oben im Kopfbereich steht die Monatssumme. Optional lässt sich eine **Monatsbudget-Warnung** einstellen. Richtwerte mit Claude Opus 5.5:
+
+| Funktion | ca. |
+|---|---|
+| Dokument, HR-Einschätzung oder Anschreiben | 0,05–0,15 $ |
+| Job-Websuche oder Leistungs-Recherche | 0,20–0,50 $ |
+
+Ein kompletter Durchlauf liegt bei grob 1–2 $. Claude Sonnet 5.5 kostet etwa die Hälfte.
+
+**Datenschutz:** Anthropic nutzt API-Daten nicht zum Training und löscht sie standardmäßig nach spätestens 30 Tagen. Eine reine EU-Verarbeitung gibt es nicht. Deshalb ist der **Datensparmodus** standardmäßig an:
+- Dokumente mit Textebene gehen nur als Text an die KI. Name, Anschrift, Telefon, E-Mail, Geburtsdatum und IBAN werden vorher geschwärzt.
+- Scans und Fotos werden nur nach ausdrücklicher Rückfrage übertragen.
+- Profil-Analysen enthalten nie Kontaktdaten.
+
+Die vollständige Recherche mit Quellen steht in [`docs/KI-Recherche.md`](docs/KI-Recherche.md).
+
+<details>
+<summary>Alternative: Einrichtung per Datei</summary>
+
+Statt über die Oberfläche kann man auch `.env.example` zu `.env` kopieren (`copy .env.example .env`) und dort `ANTHROPIC_API_KEY=` sowie optional `KI_MODELL=` eintragen. Danach den Server neu starten.
+</details>
 
 ## So funktioniert die HR-Einordnung
 
@@ -114,14 +132,14 @@ Aus fehlenden Angaben macht der Generator eine Liste mit Direktlinks ins Intervi
 npm test
 ```
 
-40 automatische Tests prüfen:
+51 automatische Tests prüfen:
 
 - Zeugnis-Decoder und Notenauswertung
 - Dokumenterkennung, auch für PDF
 - HR-Analyse
 - Leistungs- und Steuerregeln
 - Jobbörsen-Anbindung (simuliert)
-- KI-Anbindung (simulierte Claude API, inkl. Datenminimierung)
+- KI-Anbindung und KI-Einrichtung (simulierte Claude API): Schlüsselprüfung, `.env`-Schreiben, Kostenberechnung, Schwärzung, Fehlerbilder wie „kein Guthaben“
 - Server-Schutzmechanismen
 
 ## Projektstruktur
@@ -137,9 +155,12 @@ src/
   steuer.js          Steuertipps (Stand 2026)
   anschreiben.js     Anschreiben-Vorlage ohne KI
   ki.js              KI-Funktionen über die Claude API
+  einstellungen.js   KI-Modelle, Preise, Kostenberechnung, sicheres Schreiben der .env
+  datenschutz.js     Schwärzen persönlicher Angaben (Datensparmodus)
   config.js          Einstellungen (.env)
 public/              Weboberfläche (HTML, CSS, JavaScript, Fragenkatalog)
 beispiel/            fiktive Beispiel-Unterlagen
+docs/                Recherche und Konzept zum KI-Modus
 test/                automatische Tests
 ```
 
@@ -157,5 +178,7 @@ test/                automatische Tests
 | `npm: Der Befehl ist entweder falsch geschrieben …` | Node.js installieren und die Eingabeaufforderung neu öffnen. |
 | `Could not read package.json` | Du bist im falschen Ordner. Zuerst `cd C:\Users\Florian\Booos\bewerbungs-generator`. |
 | `EADDRINUSE` (Port belegt) | Läuft der Generator schon in einem anderen Fenster? Sonst anderen Port nehmen: `set PORT=3001` und danach `npm start`. |
-| KI-Knöpfe ausgegraut | API-Schlüssel in `.env` eintragen, Server neu starten, unter „Start“ den KI-Modus erlauben. |
+| KI-Knöpfe ausgegraut | Unter „Start“ → „KI-Modus einrichten“ den Schlüssel eintragen und unten den Haken „KI-Modus“ setzen. |
+| „Kein Guthaben“ | In der Claude Console unter „Billing“ Guthaben aufladen. Das Claude-Abo zählt nicht. |
+| „Websuche deaktiviert“ | In der Claude Console unter „Settings → Capabilities“ die Websuche einschalten. |
 | „Jobbörse nicht erreichbar“ | Internetverbindung prüfen, ggf. später erneut versuchen. |

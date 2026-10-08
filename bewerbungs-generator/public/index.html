@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bewerbungs-Generator</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#inhalt">Zum Inhalt springen</a>
+  <header class="kopf">
+    <div class="kopf-innen">
+      <div class="marke"><img src="icon.svg" alt="" width="32" height="32"><span>Bewerbungs-Generator</span></div>
+      <div class="status" id="status" aria-live="polite"></div>
+    </div>
+  </header>
+
+  <div class="rahmen">
+    <nav class="schritte" aria-label="Bereiche">
+      <ol id="navigation">
+        <li><a href="#start" data-ziel="start"><span class="nr">1</span>Start &amp; Datenschutz</a></li>
+        <li><a href="#unterlagen" data-ziel="unterlagen"><span class="nr">2</span>Unterlagen</a></li>
+        <li><a href="#interview" data-ziel="interview"><span class="nr">3</span>Profil-Interview</a></li>
+        <li><a href="#hr" data-ziel="hr"><span class="nr">4</span>HR-Profil</a></li>
+        <li><a href="#jobs" data-ziel="jobs"><span class="nr">5</span>Jobsuche</a></li>
+        <li><a href="#leistungen" data-ziel="leistungen"><span class="nr">6</span>Sozialleistungen</a></li>
+        <li><a href="#steuer" data-ziel="steuer"><span class="nr">7</span>Steuertipps</a></li>
+        <li><a href="#anschreiben" data-ziel="anschreiben"><span class="nr">8</span>Anschreiben &amp; CV</a></li>
+        <li><a href="#daten" data-ziel="daten"><span class="nr">9</span>Meine Daten</a></li>
+      </ol>
+    </nav>
+
+    <main id="inhalt" tabindex="-1">
+      <!-- 1 Start -->
+      <section class="bereich" id="start" aria-labelledby="t-start">
+        <h1 id="t-start">Dein Assistent für Bewerbung, Jobsuche und Ansprüche</h1>
+        <p class="einleitung">Lade deine Unterlagen hoch, beantworte das Profil-Interview – und der Generator zeigt dir, wie Personaler dich einordnen, welche Stellen passen, welche Leistungen dir zustehen könnten und wie du Steuern sparst.</p>
+        <div class="karten drei">
+          <div class="karte"><h3>Lokal zuerst</h3><p>Dokumente werden auf deinem Rechner gelesen und ausgewertet. Nichts wird gespeichert oder verschickt, solange du den KI-Modus nicht einschaltest.</p></div>
+          <div class="karte"><h3>KI optional</h3><p>Mit KI (Claude) werden auch Scans gelesen, das Profil tiefer bewertet und das Web nach Stellen und Leistungen durchsucht. Dafür werden nur die nötigen Daten übertragen.</p></div>
+          <div class="karte"><h3>Ehrlich & fair</h3><p>Geschützte Merkmale (Alter, Herkunft, Religion, Gesundheit …) fließen nie in die HR-Bewertung ein. Keine Rechts- oder Steuerberatung – aber gute Hinweise, wo es die gibt.</p></div>
+        </div>
+
+        <form class="karte einwilligung" id="einwilligung-form">
+          <h2>Einwilligungen</h2>
+          <label class="check"><input type="checkbox" name="datenschutz" required> <span><strong>Pflicht:</strong> Ich habe verstanden, dass meine Angaben und Dokumente auf diesem Rechner verarbeitet werden. Ergebnisse sind Einschätzungen, keine verbindliche Rechts-, Steuer- oder Sozialberatung.</span></label>
+          <label class="check"><input type="checkbox" name="speichern"> <span><strong>Im Browser speichern:</strong> Profil und Ergebnisse bleiben nach dem Schließen erhalten (nur in diesem Browser, löschbar unter „Meine Daten“). Ohne Haken ist nach dem Neuladen alles weg.</span></label>
+          <label class="check"><input type="checkbox" name="ki"> <span><strong>KI-Modus (optional):</strong> Ich willige ein, dass für KI-Funktionen die jeweils nötigen Daten (z. B. ein Dokument oder mein Profil ohne Name und Kontaktdaten) an die Claude API von Anthropic übertragen werden. Ich starte jede KI-Auswertung selbst per Klick.</span></label>
+          <label class="check"><input type="checkbox" name="steuer"> <span><strong>Steuertipps (optional):</strong> Ich möchte steuerliche Angaben machen und dazu Tipps bekommen.</span></label>
+          <p class="hinweis" id="ki-status-hinweis"></p>
+          <button type="submit" class="knopf">Speichern &amp; loslegen</button>
+        </form>
+      </section>
+
+      <!-- 2 Unterlagen -->
+      <section class="bereich" id="unterlagen" aria-labelledby="t-unterlagen" hidden>
+        <h1 id="t-unterlagen">Unterlagen hochladen</h1>
+        <p class="einleitung">Lebenslauf, Arbeitszeugnisse, Schul-, Ausbildungs- und Hochschulzeugnisse, Zertifikate – als PDF, Word (DOCX), Text oder Foto. Die Dokumentart wird automatisch erkannt.</p>
+        <label class="ablage" id="ablage">
+          <input type="file" id="datei-eingabe" multiple accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp">
+          <span class="ablage-titel">Dateien hierher ziehen oder klicken</span>
+          <span class="ablage-text">PDF, DOCX, TXT, PNG, JPG · bis 25 MB je Datei</span>
+        </label>
+        <p class="hinweis">Zum Ausprobieren liegen im Ordner <code>beispiel/</code> fiktive Unterlagen.</p>
+        <div id="dokument-liste" class="dokumente"></div>
+      </section>
+
+      <!-- 3 Interview -->
+      <section class="bereich" id="interview" aria-labelledby="t-interview" hidden>
+        <h1 id="t-interview">Profil-Interview</h1>
+        <p class="einleitung">Je mehr du hier beantwortest, desto genauer wird die Einordnung. Alles ist freiwillig, alles wird automatisch gesichert. Fragen mit Hinweis erklären, warum Personaler darauf achten.</p>
+        <div class="fortschritt-gesamt"><span id="interview-fortschritt-text"></span><progress id="interview-fortschritt" max="100" value="0"></progress></div>
+        <div id="interview-module"></div>
+        <div class="karte" id="zusatzfragen-karte" hidden>
+          <h2>Vertiefende Rückfragen</h2>
+          <p class="hinweis">Diese Fragen kamen aus der KI-Auswertung deiner Unterlagen bzw. deines Profils. Deine Antworten fließen in die nächste Auswertung ein.</p>
+          <div id="zusatzfragen"></div>
+        </div>
+        <p><a class="knopf" href="#hr" data-ziel="hr">Weiter zum HR-Profil →</a></p>
+      </section>
+
+      <!-- 4 HR -->
+      <section class="bereich" id="hr" aria-labelledby="t-hr" hidden>
+        <h1 id="t-hr">So sieht dich HR</h1>
+        <p class="einleitung">Einordnung nach den Rastern, die Personalabteilungen, Bewerbermanagement-Systeme und die Arbeitsagentur nutzen – plus konkrete Hinweise, wo du nachschärfen kannst.</p>
+        <div class="aktionen">
+          <button type="button" class="knopf" id="hr-start">Profil auswerten</button>
+          <button type="button" class="knopf ki" id="hr-ki" data-ki>Tiefere KI-Einschätzung</button>
+        </div>
+        <div id="hr-ergebnis"></div>
+        <div id="hr-ki-ergebnis"></div>
+      </section>
+
+      <!-- 5 Jobs -->
+      <section class="bereich" id="jobs" aria-labelledby="t-jobs" hidden>
+        <h1 id="t-jobs">Passende Stellen finden</h1>
+        <p class="einleitung">Durchsucht die Jobbörse der Bundesagentur für Arbeit, die größte Stellenbörse Deutschlands. Mit KI zusätzlich Karriereseiten und andere Portale im Web.</p>
+        <form class="karte" id="job-form">
+          <div class="feldraster">
+            <label>Wunschposition<input name="was" type="text" required></label>
+            <label>Ort oder PLZ<input name="wo" type="text"></label>
+            <label>Umkreis<select name="umkreis"><option value="10">10 km</option><option value="25" selected>25 km</option><option value="50">50 km</option><option value="100">100 km</option><option value="200">200 km</option></select></label>
+            <label>Arbeitszeit<select name="arbeitszeit"><option value="">alle</option><option value="vollzeit">Vollzeit</option><option value="teilzeit">Teilzeit</option><option value="homeoffice">Homeoffice</option><option value="minijob">Minijob</option><option value="schicht">Schicht/Nacht/Wochenende</option></select></label>
+            <label>Art<select name="angebotsart"><option value="arbeit">Arbeit</option><option value="ausbildung">Ausbildung/Duales Studium</option><option value="praktikum">Praktikum/Trainee</option><option value="selbststaendigkeit">Selbständigkeit</option></select></label>
+            <label>Veröffentlicht in den letzten<select name="tage"><option value="">beliebig</option><option value="7">7 Tagen</option><option value="30" selected>30 Tagen</option><option value="100">100 Tagen</option></select></label>
+          </div>
+          <label class="check klein"><input type="checkbox" name="ohneZeitarbeit"> <span>Zeitarbeit ausblenden</span></label>
+          <div class="chips" id="job-vorschlaege" aria-label="Vorschläge"></div>
+          <div class="aktionen">
+            <button type="submit" class="knopf">Stellen suchen</button>
+            <button type="button" class="knopf ki" id="jobs-ki" data-ki>KI-Websuche</button>
+          </div>
+        </form>
+        <div id="job-ergebnis"></div>
+        <div id="job-ki-ergebnis"></div>
+      </section>
+
+      <!-- 6 Leistungen -->
+      <section class="bereich" id="leistungen" aria-labelledby="t-leistungen" hidden>
+        <h1 id="t-leistungen">Sozialleistungen &amp; Förderungen</h1>
+        <p class="einleitung">Eine Vorprüfung, welche Leistungen in deiner Lage in Frage kommen – von Arbeitslosengeld über Wohngeld bis zur Erstattung von Bewerbungskosten. Ob ein Anspruch besteht, entscheidet die zuständige Stelle.</p>
+        <form class="karte" id="situation-form"><div class="feldraster" id="situation-felder"></div>
+          <div class="aktionen">
+            <button type="submit" class="knopf">Ansprüche prüfen</button>
+            <button type="button" class="knopf ki" id="leistungen-ki" data-ki>KI-Recherche (Web &amp; Foren)</button>
+          </div>
+        </form>
+        <div id="leistungen-ergebnis"></div>
+        <div id="leistungen-ki-ergebnis"></div>
+      </section>
+
+      <!-- 7 Steuer -->
+      <section class="bereich" id="steuer" aria-labelledby="t-steuer" hidden>
+        <h1 id="t-steuer">Steuertipps</h1>
+        <div id="steuer-gesperrt" class="karte">
+          <p>Steuertipps brauchen Angaben zu Einkommen und Familie. Dafür ist deine ausdrückliche Einwilligung nötig.</p>
+          <label class="check"><input type="checkbox" id="steuer-freigabe"> <span>Ja, ich möchte steuerliche Angaben machen und Tipps bekommen.</span></label>
+        </div>
+        <div id="steuer-bereich" hidden>
+          <p class="einleitung">Rund um Job, Bewerbung und Jobwechsel (Stand 2026). Keine Steuerberatung.</p>
+          <form class="karte" id="steuer-form"><div class="feldraster" id="steuer-felder"></div>
+            <div class="aktionen">
+              <button type="submit" class="knopf">Tipps anzeigen</button>
+              <button type="button" class="knopf ki" id="steuer-ki" data-ki>KI-Prüfung mit aktuellen Werten</button>
+            </div>
+          </form>
+          <div id="steuer-ergebnis"></div>
+          <div id="steuer-ki-ergebnis"></div>
+        </div>
+      </section>
+
+      <!-- 8 Anschreiben -->
+      <section class="bereich" id="anschreiben" aria-labelledby="t-anschreiben" hidden>
+        <h1 id="t-anschreiben">Anschreiben &amp; Lebenslauf</h1>
+        <form class="karte" id="anschreiben-form">
+          <label>Stellenanzeige (kompletten Text einfügen)<textarea name="stellenanzeige" rows="8" required></textarea></label>
+          <label>Besondere Wünsche (optional)<input name="hinweise" type="text" placeholder="z. B. eher locker, Quereinstieg betonen"></label>
+          <div class="aktionen">
+            <button type="submit" class="knopf">Vorlage erstellen</button>
+            <button type="button" class="knopf ki" id="anschreiben-ki" data-ki>Mit KI schreiben</button>
+          </div>
+        </form>
+        <div id="anschreiben-ergebnis"></div>
+        <div class="karte">
+          <h2>Tabellarischer Lebenslauf</h2>
+          <p class="hinweis">Wird aus deinem Profil erzeugt – ATS-freundlich, ohne Foto, Geburtsdatum oder Familienstand.</p>
+          <div class="aktionen"><button type="button" class="knopf" id="cv-erzeugen">Lebenslauf erzeugen</button><button type="button" class="knopf zweit" id="cv-drucken" hidden>Drucken / als PDF speichern</button></div>
+          <div id="cv-vorschau"></div>
+        </div>
+      </section>
+
+      <!-- 9 Daten -->
+      <section class="bereich" id="daten" aria-labelledby="t-daten" hidden>
+        <h1 id="t-daten">Meine Daten</h1>
+        <div class="karten drei">
+          <div class="karte"><h3>Exportieren</h3><p>Alle Angaben und Ergebnisse als JSON-Datei sichern – z. B. um später weiterzumachen.</p><button type="button" class="knopf" id="export">Exportieren</button></div>
+          <div class="karte"><h3>Importieren</h3><p>Eine zuvor exportierte Datei wieder laden.</p><label class="knopf zweit">Datei wählen<input type="file" id="import" accept=".json" hidden></label></div>
+          <div class="karte"><h3>Alles löschen</h3><p>Entfernt Profil, Dokument-Auswertungen und Ergebnisse aus diesem Browser.</p><button type="button" class="knopf gefahr" id="loeschen">Alles löschen</button></div>
+        </div>
+        <div class="karte"><h2>Was wird wo verarbeitet?</h2><ul id="datenuebersicht"></ul></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

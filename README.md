@@ -162,4 +162,4 @@ data/
 
 ---
 
-*Hinweis: Im selben Repository liegen außerdem die Dateien eines separaten Projekts (Quittungsscanner: `app.py`, `excel_export.py`, `templates/`, `static/` …). Sie haben mit dieser Demo nichts zu tun.*
+*Hinweis: Im selben Repository liegen außerdem separate Projekte: der Quittungsscanner (`app.py`, `excel_export.py`, `templates/`, `static/` …) und der Bewerbungs-Generator im Ordner [`bewerbungs-generator/`](bewerbungs-generator/README.md). Sie haben mit dieser Demo nichts zu tun.*

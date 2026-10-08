@@ -1,0 +1,19 @@
+{
+  "name": "bewerbungs-generator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bewerbungs-Generator: Unterlagen auswerten, HR-Profil, Jobsuche, Sozialleistungen und Steuertipps – lokal, mit optionaler KI (Claude).",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1",
+    "mammoth": "^1.13.0",
+    "unpdf": "^1.8.1"
+  }
+}

@@ -1,0 +1,13 @@
+Abschlusszeugnis
+Mittlerer Schulabschluss
+Realschule Musterstadt – Schuljahr 2013/2014
+
+Deutsch: gut
+Mathematik: 2
+Englisch: befriedigend
+Biologie: gut
+Geschichte: 3
+Wirtschaft: sehr gut
+Sport: 2
+
+Durchschnittsnote: 2,3

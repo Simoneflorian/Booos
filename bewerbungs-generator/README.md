@@ -24,30 +24,12 @@ Ein persönlicher Assistent für Bewerbung, Jobsuche und Ansprüche, der auf dei
 
 Voraussetzung: [Node.js](https://nodejs.org) ab Version 20.12. Bei dir ist Version 24 installiert, das passt.
 
-Öffne die **Eingabeaufforderung** und gib die Befehle **einzeln** ein. Drück nach jeder Zeile Enter und warte, bis sie fertig ist.
+Öffne die **Eingabeaufforderung**, kopiere die passende Zeile **komplett** und füge sie mit Rechtsklick ein. Mit Enter bestätigen. Das `&&` sorgt dafür, dass die Befehle nacheinander laufen und beim ersten Fehler abbrechen.
 
-**Erstes Mal** (falls das Repository schon unter `C:\Users\Florian\Booos` liegt):
+**Erstes Mal bzw. nach Updates** (Repository liegt unter `C:\Users\Florian\Booos`):
 
 ```
-cd C:\Users\Florian\Booos
-```
-```
-git fetch origin
-```
-```
-git checkout claude/admiring-fermi-6dxf84
-```
-```
-git pull
-```
-```
-cd bewerbungs-generator
-```
-```
-npm install
-```
-```
-npm start
+cd /d C:\Users\Florian\Booos && git fetch origin && git checkout claude/admiring-fermi-6dxf84 && git pull && cd bewerbungs-generator && npm install && npm start
 ```
 
 Dann im Browser öffnen: **http://localhost:3000**. Falls die Seite nicht lädt: **http://127.0.0.1:3000**.
@@ -57,10 +39,7 @@ Das Fenster mit `npm start` muss offen bleiben, solange du den Generator nutzt. 
 **Später** reicht:
 
 ```
-cd C:\Users\Florian\Booos\bewerbungs-generator
-```
-```
-npm start
+cd /d C:\Users\Florian\Booos\bewerbungs-generator && npm start
 ```
 
 ### Zum Ausprobieren
@@ -107,7 +86,11 @@ Die vollständige Recherche mit Quellen steht in [`docs/KI-Recherche.md`](docs/K
 <details>
 <summary>Alternative: Einrichtung per Datei</summary>
 
-Statt über die Oberfläche kann man auch `.env.example` zu `.env` kopieren (`copy .env.example .env`) und dort `ANTHROPIC_API_KEY=` sowie optional `KI_MODELL=` eintragen. Danach den Server neu starten.
+Statt über die Oberfläche kann man auch die Vorlage kopieren und im Editor öffnen, dort `ANTHROPIC_API_KEY=` sowie optional `KI_MODELL=` eintragen und danach den Server neu starten:
+
+```
+cd /d C:\Users\Florian\Booos\bewerbungs-generator && copy .env.example .env && notepad .env
+```
 </details>
 
 ## So funktioniert die HR-Einordnung
@@ -177,7 +160,7 @@ test/                automatische Tests
 |---|---|
 | `npm: Der Befehl ist entweder falsch geschrieben …` | Node.js installieren und die Eingabeaufforderung neu öffnen. |
 | `Could not read package.json` | Du bist im falschen Ordner. Zuerst `cd C:\Users\Florian\Booos\bewerbungs-generator`. |
-| `EADDRINUSE` (Port belegt) | Läuft der Generator schon in einem anderen Fenster? Sonst anderen Port nehmen: `set PORT=3001` und danach `npm start`. |
+| `EADDRINUSE` (Port belegt) | Läuft der Generator schon in einem anderen Fenster? Sonst anderen Port nehmen: `set PORT=3001 && npm start` |
 | KI-Knöpfe ausgegraut | Unter „Start“ → „KI-Modus einrichten“ den Schlüssel eintragen und unten den Haken „KI-Modus“ setzen. |
 | „Kein Guthaben“ | In der Claude Console unter „Billing“ Guthaben aufladen. Das Claude-Abo zählt nicht. |
 | „Websuche deaktiviert“ | In der Claude Console unter „Settings → Capabilities“ die Websuche einschalten. |
